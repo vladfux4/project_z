@@ -1,0 +1,4 @@
+Kernel should support 2 modes:
+
+1. Performence
+2. Power saving
