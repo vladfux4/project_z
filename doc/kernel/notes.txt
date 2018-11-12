@@ -2,3 +2,10 @@ Kernel should support 2 modes:
 
 1. Performence
 2. Power saving
+
+On time slice expiration, Scheduler should make all calculations in CPU0 thread and signal another Workers to switch contexts.
+
+SVC handling
+1. Split service call handling on 2 parts: threadsafe and blocking.
+2. Set blocker for process. If routine is already active - set activation flag for it. if it is not active - run routine on current CPU.
+3. On routine end, signal Worker that triggered it, to switch on relevant Process.
