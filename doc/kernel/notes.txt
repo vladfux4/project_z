@@ -8,4 +8,9 @@ On time slice expiration, Scheduler should make all calculations in CPU0 thread 
 SVC handling
 1. Split service call handling on 2 parts: threadsafe and blocking.
 2. Set blocker for process. If routine is already active - set activation flag for it. if it is not active - run routine on current CPU.
-3. On routine end, signal Worker that triggered it, to switch on relevant Process.
+3. On routine end, signal Worker that triggered it, to switch on relevant Process. (via InterCoreInterface)
+
+
+Sequences:
+1. Tick
+3. Event handling (from SV, from interrupt handler)
