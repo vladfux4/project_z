@@ -14,34 +14,41 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef KERNEL_SCHEDULER_ROUTINE_H_
-#define KERNEL_SCHEDULER_ROUTINE_H_
+#ifndef ARCH_ARM64_MUTEX_H_
+#define ARCH_ARM64_MUTEX_H_
 
-namespace kernel {
-namespace scheduler {
+#include "kernel/hal/mutex_base.h"
+
+namespace arch {
+namespace arm64 {
 
 /**
  * @brief The Routine class
  */
-class Routine {
+class Mutex : public kernel::hal::MutexBase {
  public:
   /**
    * @brief Constructor
    */
-  Routine();
+  Mutex();
 
   /**
    * @brief Destructor
    */
-  virtual ~Routine();
+  virtual ~Mutex() override;
 
   /**
-   * @brief Exec
+   * @brief Lock
    */
-  virtual void Exec() = 0;
+  virtual void Lock() override;
+
+  /**
+   * @brief Unlock
+   */
+  virtual void Unlock() override;
 };
 
-}  // namespace scheduler
-}  // namespace kernel
+}  // namespace arm64
+}  // namespace arch
 
-#endif  // KERNEL_SCHEDULER_ROUTINE_H_
+#endif  // ARCH_ARM64_MUTEX_H_

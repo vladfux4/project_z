@@ -14,34 +14,17 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef KERNEL_SCHEDULER_ROUTINE_H_
-#define KERNEL_SCHEDULER_ROUTINE_H_
+#ifndef KERNEL_HAL_MUTEX_H_
+#define KERNEL_HAL_MUTEX_H_
+
+#include "gen/arch_types_gen.h"
 
 namespace kernel {
-namespace scheduler {
+namespace hal {
 
-/**
- * @brief The Routine class
- */
-class Routine {
- public:
-  /**
-   * @brief Constructor
-   */
-  Routine();
+typedef arch::Mutex Mutex;
 
-  /**
-   * @brief Destructor
-   */
-  virtual ~Routine();
-
-  /**
-   * @brief Exec
-   */
-  virtual void Exec() = 0;
-};
-
-}  // namespace scheduler
+}  // namespace hal
 }  // namespace kernel
 
-#endif  // KERNEL_SCHEDULER_ROUTINE_H_
+#endif  // KERNEL_HAL_MUTEX_H_

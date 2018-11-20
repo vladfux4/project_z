@@ -14,8 +14,9 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#include "scheduler/routine.h"
+#include "kernel/scheduler/routine.h"
 
+namespace kernel {
 namespace scheduler {
 
 Routine::Routine() {
@@ -25,3 +26,4 @@ Routine::~Routine() {
 }
 
 }  // namespace scheduler
+}  // namespace kernel

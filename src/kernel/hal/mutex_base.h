@@ -14,34 +14,34 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef KERNEL_SCHEDULER_ROUTINE_H_
-#define KERNEL_SCHEDULER_ROUTINE_H_
+#ifndef KERNEL_HAL_MUTEX_BASE_H_
+#define KERNEL_HAL_MUTEX_BASE_H_
 
 namespace kernel {
-namespace scheduler {
+namespace hal {
 
 /**
- * @brief The Routine class
+ * @brief The Mutex base class
  */
-class Routine {
+class MutexBase {
  public:
   /**
-   * @brief Constructor
+   * @brief Lock
    */
-  Routine();
+  virtual void Lock() = 0;
 
   /**
-   * @brief Destructor
+   * @brief Unlock
    */
-  virtual ~Routine();
+  virtual void Unlock() = 0;
 
   /**
-   * @brief Exec
+   * @brief Routine
    */
-  virtual void Exec() = 0;
+  virtual ~MutexBase();
 };
 
-}  // namespace scheduler
+}  // namespace hal
 }  // namespace kernel
 
-#endif  // KERNEL_SCHEDULER_ROUTINE_H_
+#endif  // KERNEL_HAL_MUTEX_BASE_H_

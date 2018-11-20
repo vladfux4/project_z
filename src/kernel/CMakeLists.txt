@@ -1,6 +1,9 @@
-include_directories(.)
+include_directories(../)
 
 add_library (kernel
+  hal/mutex_base.h
+  hal/mutex.h
+
   scheduler/routine.h
   scheduler/routine.cc
 )
