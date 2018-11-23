@@ -23,29 +23,19 @@ namespace arch {
 namespace arm64 {
 
 /**
- * @brief The Routine class
+ * @brief The Mutex class
  */
-class Mutex : public kernel::hal::MutexBase {
+class Mutex {
  public:
-  /**
-   * @brief Constructor
-   */
-  Mutex();
-
-  /**
-   * @brief Destructor
-   */
-  virtual ~Mutex() override;
-
   /**
    * @brief Lock
    */
-  virtual void Lock() override;
+  void Lock();
 
   /**
    * @brief Unlock
    */
-  virtual void Unlock() override;
+  void Unlock();
 };
 
 }  // namespace arm64

@@ -18,11 +18,12 @@ GNU General Public License for more details.
 #define KERNEL_HAL_MUTEX_H_
 
 #include "gen/arch_types_gen.h"
+#include "kernel/hal/mutex_base.h"
 
 namespace kernel {
 namespace hal {
 
-typedef arch::Mutex Mutex;
+typedef MutexBase<arch::Mutex> Mutex;
 
 }  // namespace hal
 }  // namespace kernel

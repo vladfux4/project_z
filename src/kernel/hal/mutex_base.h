@@ -23,22 +23,21 @@ namespace hal {
 /**
  * @brief The Mutex base class
  */
+template <class T>
 class MutexBase {
  public:
   /**
    * @brief Lock
    */
-  virtual void Lock() = 0;
+  inline void Lock() { raw_.Lock(); }
 
   /**
    * @brief Unlock
    */
-  virtual void Unlock() = 0;
+  inline void Unlock() { raw_.Unlock(); }
 
-  /**
-   * @brief Routine
-   */
-  virtual ~MutexBase();
+ private:
+  T raw_;
 };
 
 }  // namespace hal

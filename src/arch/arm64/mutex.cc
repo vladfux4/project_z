@@ -19,12 +19,6 @@ GNU General Public License for more details.
 namespace arch {
 namespace arm64 {
 
-Mutex::Mutex() {
-}
-
-Mutex::~Mutex() {
-}
-
 void Mutex::Lock() {
 }
 
