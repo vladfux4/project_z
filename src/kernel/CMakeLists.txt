@@ -6,4 +6,5 @@ add_library (kernel
 
   scheduler/routine.h
   scheduler/routine.cc
+  scheduler/routine_static_wrapper.h
 )
