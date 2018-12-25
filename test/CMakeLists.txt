@@ -4,3 +4,4 @@ include_directories(
 )
 
 add_subdirectory(kernel/scheduler)
+add_subdirectory(kernel/mm)
