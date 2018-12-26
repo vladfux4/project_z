@@ -14,3 +14,22 @@ SVC handling
 Sequences:
 1. Tick
 3. Event handling (from SV, from interrupt handler)
+
+
+
+Boot process:
+1. Bootloader
+  0. Reset (registers, cache, set cpu mode)
+  1. Memory init.
+  2. Console init.
+  
+2. Core
+  0. Parse platform info from bootloader. (platfrom bynaries)
+  1. Stacks init. (behavior - kernel, mechanism - arch)
+  2. MMU init.
+  3. Interrupt handler.
+  4. The system timer.
+  5. Scheduler
+  6. Internal components of the kernel.
+  7. Enable interrupts.
+  8. Run kernel process.
