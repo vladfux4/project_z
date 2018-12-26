@@ -1,6 +1,9 @@
 include_directories(../../)
 
-add_library (arch_arm64
-  mutex.h
-  mutex.cc
+set(SOURCE ${SOURCE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/arch_start.s
+  ${CMAKE_CURRENT_SOURCE_DIR}/mutex.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/mutex.cc
+
+  CACHE INTERNAL "" FORCE
 )

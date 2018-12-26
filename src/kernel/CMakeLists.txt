@@ -1,10 +1,15 @@
 include_directories(../)
 
-add_library (kernel
-  hal/mutex_base.h
-  hal/mutex.h
+set(SOURCE ${SOURCE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/hal/mutex_base.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/hal/mutex.h
 
-  scheduler/routine.h
-  scheduler/routine.cc
-  scheduler/routine_static_wrapper.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduler/routine.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduler/routine.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduler/routine_static_wrapper.h
+
+  ${CMAKE_CURRENT_SOURCE_DIR}/kernel.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/kernel.cc
+
+  CACHE INTERNAL "" FORCE
 )
