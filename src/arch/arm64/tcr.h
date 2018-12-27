@@ -27,10 +27,20 @@ namespace arm64 {
  */
 class TCR {
  public:
-  enum class TG1 {
-    _4KB,
-    _16KB,
-    _64KB,
+  static constexpr uint64_t IPS_SHIFT = 32;
+  static constexpr uint64_t IPS_MASK = (0b111ULL << IPS_SHIFT);
+  enum class IPS : uint64_t {
+    _32B = (0b000ULL << IPS_SHIFT),
+    _36B = (0b001ULL << IPS_SHIFT),
+    _40B = (0b010ULL << IPS_SHIFT),
+  };
+
+  static constexpr uint64_t TG1_SHIFT = 30;
+  static constexpr uint64_t TG1_MASK = (0b11ULL << TG1_SHIFT);
+  enum class TG1 : uint64_t {
+    _4KB = (0b10ULL << TG1_SHIFT),
+    _16KB = (0b01ULL << TG1_SHIFT),
+    _64KB = (0b11ULL << TG1_SHIFT),
   };
 
   /**
@@ -46,13 +56,14 @@ class TCR {
   constexpr TCR(const uint64_t raw);
 
   /**
-   * @brief Convert TG1 to raw value
+   * @brief Convert to raw value
    *
-   * @param tg1
+   * @param value
    *
-   * @return value
+   * @return raw value
    */
-  static inline constexpr uint64_t ToRaw(const TG1 tg1);
+  template<class T>
+  static __attribute__((always_inline)) constexpr uint64_t ToRaw(const T value);
 
   /**
    * @brief Set TG1
@@ -68,36 +79,33 @@ class TCR {
    */
   inline TG1 GetTG1() const;
 
- private:
-  static constexpr uint64_t TG1_SHIFT = 37;
-  static constexpr uint64_t TG1_MASK = (0b11ULL << TG1_SHIFT);
-  static constexpr uint64_t TG1_VALUE_4KB = (0b10ULL);
-  static constexpr uint64_t TG1_VALUE_16KB = (0b01ULL);
-  static constexpr uint64_t TG1_VALUE_64KB = (0b11ULL);
+  /**
+   * @brief Set IPS
+   *
+   * @param ips
+   */
+  inline void Set(const IPS ips);
 
+  /**
+   * @brief Get TG1
+   *
+   * @return TG1
+   */
+  inline IPS GetIPS() const;
+
+ private:
   uint64_t raw_;
 };
 
-constexpr TCR::TCR() : raw_() {
+constexpr TCR::TCR() : raw_(0) {
 }
 
 constexpr TCR::TCR(const uint64_t raw) : raw_(raw) {
 }
 
-inline constexpr uint64_t TCR::ToRaw(const TCR::TG1 tg1) {
-  switch (tg1) {
-    case TG1::_4KB: {
-      return (TG1_VALUE_4KB << TG1_SHIFT);
-    }
-    case TG1::_16KB: {
-      return (TG1_VALUE_16KB << TG1_SHIFT);
-    }
-    case TG1::_64KB: {
-      return (TG1_VALUE_64KB << TG1_SHIFT);
-    }
-  }
-
-  return UINT64_MAX;
+template<class T>
+__attribute__((always_inline)) constexpr uint64_t TCR::ToRaw(const T value) {
+  return static_cast<uint64_t>(value);
 }
 
 inline void TCR::Set(const TCR::TG1 tg1) {
@@ -106,24 +114,16 @@ inline void TCR::Set(const TCR::TG1 tg1) {
 }
 
 inline TCR::TG1 TCR::GetTG1() const {
-  uint32_t value = ((TG1_MASK & raw_) >> TG1_SHIFT);
+  return static_cast<TG1>((TG1_MASK & raw_) >> TG1_SHIFT);
+}
 
-  switch (value) {
-    case TG1_VALUE_4KB: {
-      return TG1::_4KB;
-    }
-    case TG1_VALUE_16KB: {
-      return TG1::_16KB;
-    }
-    case TG1_VALUE_64KB: {
-      return TG1::_64KB;
-    }
-    default: {
-      //assert();
-    }
-  }
+inline void TCR::Set(const TCR::IPS ips) {
+  raw_ &= ~IPS_MASK;
+  raw_ |= ToRaw(ips);
+}
 
-  return TG1::_4KB;
+inline TCR::IPS TCR::GetIPS() const {
+  return static_cast<IPS>((IPS_MASK & raw_) >> IPS_SHIFT);
 }
 
 }  // namespace arm64
