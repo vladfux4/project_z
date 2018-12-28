@@ -14,13 +14,14 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef ARCH_ARM64_TCR_H_
-#define ARCH_ARM64_TCR_H_
+#ifndef ARCH_ARM64_MM_TCR_H_
+#define ARCH_ARM64_MM_TCR_H_
 
 #include <stdint.h>
 
 namespace arch {
 namespace arm64 {
+namespace mm {
 
 /**
  * @brief The Translation Control Register class
@@ -326,7 +327,8 @@ inline uint8_t TCR::GetT0SZ() const {
   return (64 - ((T0SZ_MASK & raw_) >> T0SZ_SHIFT));
 }
 
+}  // namespace mm
 }  // namespace arm64
 }  // namespace arch
 
-#endif  // ARCH_ARM64_TCR_H_
+#endif  // ARCH_ARM64_MM_TCR_H_
