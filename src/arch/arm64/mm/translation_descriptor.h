@@ -14,8 +14,8 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef ARCH_ARM64_TRANSLATION_DESCRIPTOR_H_
-#define ARCH_ARM64_TRANSLATION_DESCRIPTOR_H_
+#ifndef ARCH_ARM64_MM_TRANSLATION_DESCRIPTOR_H_
+#define ARCH_ARM64_MM_TRANSLATION_DESCRIPTOR_H_
 
 #include <stdint.h>
 #include <assert.h>
@@ -23,7 +23,6 @@ GNU General Public License for more details.
 namespace arch {
 namespace arm64 {
 namespace mm {
-namespace types {
 
 /**
  * @brief The Translation table lvl
@@ -37,129 +36,209 @@ enum class TableLvl {
 /**
  * @brief The Page size enum
  */
-enum class GranuleSize {
+enum class PageSize {
   _4KB,
   _16KB,
   _64KB,
 };
 
+namespace types {
+
 /**
  * @brief The Descriptor entry type
  */
-enum EntryType {
+enum Entry {
   ENTRY_INVALID = 0b00U,
   ENTRY_BLOCK = 0b01U,
   ENTRY_TABLE = 0b11U,
 };
 
-enum ApType {
+enum AP {
   AP_NOEFFECT = 0b00U,
   AP_NO_EL0 = 0b01U,
   AP_NO_WRITE = 0b10U,
   AP_NO_WRITE_EL0_READ = 0b11U,
 };
 
-enum PxnType {
+enum PXN {
   PXN_OFF = 0,
   PXN_ON = 1,
 };
 
-enum XnType {
+enum XN {
   XN_OFF = 0,
   XN_ON = 1,
 };
 
-enum NsType {
+enum NS {
   NS_OFF = 0,
   NS_ON = 1,
 };
 
-template<GranuleSize kGranule>
-struct __attribute__((__packed__)) TableDescriptor {
- public:
-  static constexpr uint8_t AddressStartBit(const GranuleSize granule) {
-    switch (granule) {
-      case GranuleSize::_4KB: { return 12; }
-      case GranuleSize::_16KB: { return 14; }
-      case GranuleSize::_64KB: { return 16; }
-    }
-
-    return 0xff;
-  }
-
-  EntryType entry_type : 2; // @0-1 Always 3 for a page table
-  uint64_t _reserved2 : (AddressStartBit(kGranule) - 2); // @2-11 Set to 0
-  uint64_t address : (48 - AddressStartBit(kGranule)); // @12-47 36 Bits of address
-  uint64_t _reserved48_58 : 11; // @48-58 Set to 0
-  PxnType pxn : 1; // @59 Never allow execution from a lower EL level
-  XnType xn : 1; // @60 Never allow translation from a lower EL level
-  ApType ap : 2; // @61-62 AP Table control .. see enumerate options
-  NsType ns : 1; // @63 Secure state, for accesses from Non-secure state this bit is RES0 and is ignored
+enum S2AP {
+  S2AP_NORMAL = 0,
+  S2AP_NOREAD_EL0 = 1,
+  S2AP_NO_WRITE = 2,
 };
 
-static_assert(sizeof(TableDescriptor<GranuleSize::_4KB>) == 8, "TableDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(TableDescriptor<GranuleSize::_16KB>) == 8, "TableDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(TableDescriptor<GranuleSize::_64KB>) == 8, "TableDescriptor should be 0x08 bytes in size");
-
-enum S2APType {
-  S2AP_NOREAD_EL0 = 1,  // No read access for EL0
-  S2AP_NO_WRITE = 2,  // No write access
-};
-
-enum SHType {
+enum SH {
+  SH_NON_SHAREABLE = 0,
   SH_OUTER_SHAREABLE = 2, //   Outter shareable
   SH_INNER_SHAREABLE = 3, //   Inner shareable
 };
 
-template<GranuleSize kGranule, TableLvl kLvl>
-struct __attribute__((__packed__)) EntryDescriptor {
- static_assert(!((GranuleSize::_16KB == kGranule) && (TableLvl::_1 == kLvl)), "Not allowed combination");
- static_assert(!((GranuleSize::_64KB == kGranule) && (TableLvl::_1 == kLvl)), "Not allowed combination");
+enum AF {
+  AF_OFF = 0,
+  AF_ON = 1,
+};
 
+enum Contiguous {
+  CONTIGUOUS_OFF = 0,
+  CONTIGUOUS_ON = 1,
+};
+
+enum MemoryAttr {
+  MEMORYATTR_DEVICE_NGNRNE = 0,
+  MEMORYATTR_DEVICE_NGNRE = 1,
+  MEMORYATTR_DEVICE_GRE = 2,
+  MEMORYATTR_NORMAL_NC = 3,
+  MEMORYATTR_NORMAL = 4,
+};
+
+
+}  // namespace types
+
+/**
+ * @brief The Translation table descriptor template
+ */
+template<PageSize kPageSize>
+struct __attribute__((__packed__)) TableDescriptor {
  public:
-  static constexpr uint8_t AddressStartBit(const GranuleSize granule, const TableLvl lvl) {
-    if (TableLvl::_3 == lvl) {
-      switch (granule) {
-        case GranuleSize::_4KB: { return 12; }
-        case GranuleSize::_16KB: { return 14; }
-        case GranuleSize::_64KB: { return 16; }
-      }
-    }
+  TableDescriptor() {
+    *(reinterpret_cast<uint64_t*>(&data)) = 0;
+  }
 
-    switch (granule) {
-      case GranuleSize::_4KB: { return (TableLvl::_2 == lvl) ? 21 : 30; }
-      case GranuleSize::_16KB: { return 25; }
-      case GranuleSize::_64KB: { return 29; }
+  TableDescriptor(const types::Entry entry, const uint64_t address,
+                  const types::PXN pxn, const types::XN xn,
+                  const types::AP ap, const types::NS ns) {
+    *(reinterpret_cast<uint64_t*>(&data)) = 0;
+
+    data.entry = entry;
+    data.address = address;
+    data.pxn = pxn;
+    data.xn = xn;
+    data.ap = ap;
+    data.ns = ns;
+  }
+
+  static constexpr uint8_t AddressStartBit(const PageSize size) {
+    switch (size) {
+      case PageSize::_4KB: { return 12; }
+      case PageSize::_16KB: { return 14; }
+      case PageSize::_64KB: { return 16; }
     }
 
     return 0xff;
   }
 
-  EntryType entry_type : 2; // @0-1  Always 1 for a block table
-  uint64_t mem_attr : 4; // @2-5
-  S2APType s2ap : 2; // @6-7
-  SHType sh : 2; // @8-9
-  uint64_t af : 1; // @10  Accessable flag
-  uint64_t _reserved1 : (AddressStartBit(kGranule, kLvl) - 11); // @11-(X-1) Set to 0
-  uint64_t address : (48 - AddressStartBit(kGranule, kLvl)); // @X-47 N Bits of address
-  uint64_t _reserved48_51 : 4; // @48-51 Set to 0
-  uint64_t contiguous : 1; // @52 Contiguous
-  uint64_t _reserved53 : 1; // @53 Set to 0
-  uint64_t xn : 1; // @54 No execute if bit set
-  uint64_t _reserved55_63 : 9; // @55-63 Set to 0
+  static inline uint64_t ToTableAddress(const void* address) {
+    return (reinterpret_cast<uint64_t>(address) >> AddressStartBit(kPageSize));
+  }
+
+  struct Layout {
+    types::Entry entry : 2; // @0-1 entry type
+    uint64_t _reserved2 : (AddressStartBit(kPageSize) - 2); // @2-11 Set to 0
+    uint64_t address : (48 - AddressStartBit(kPageSize)); // @12-47 36 Bits of address
+    uint64_t _reserved48_58 : 11; // @48-58 Set to 0
+    types::PXN pxn : 1; // @59 Never allow execution from a lower EL level
+    types::XN xn : 1; // @60 Never allow translation from a lower EL level
+    types::AP ap : 2; // @61-62 AP Table control .. see enumerate options
+    types::NS ns : 1; // @63 Secure state, for accesses from Non-secure state this bit is RES0 and is ignored
+  };
+
+  Layout data;
 };
 
-static_assert(sizeof(EntryDescriptor<GranuleSize::_4KB, TableLvl::_1>) == 8, "EntryDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(EntryDescriptor<GranuleSize::_4KB, TableLvl::_2>) == 8, "EntryDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(EntryDescriptor<GranuleSize::_4KB, TableLvl::_3>) == 8, "EntryDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(EntryDescriptor<GranuleSize::_16KB, TableLvl::_2>) == 8, "EntryDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(EntryDescriptor<GranuleSize::_16KB, TableLvl::_3>) == 8, "EntryDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(EntryDescriptor<GranuleSize::_64KB, TableLvl::_2>) == 8, "EntryDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(EntryDescriptor<GranuleSize::_64KB, TableLvl::_3>) == 8, "EntryDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(TableDescriptor<PageSize::_4KB>) == 8, "TableDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(TableDescriptor<PageSize::_16KB>) == 8, "TableDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(TableDescriptor<PageSize::_64KB>) == 8, "TableDescriptor should be 0x08 bytes in size");
 
-}  // namespace types
+/**
+ * @brief The Translation table entry descriptor template
+ */
+template<PageSize kPageSize, TableLvl kLvl>
+struct __attribute__((__packed__)) EntryDescriptor {
+ static_assert(!((PageSize::_16KB == kPageSize) && (TableLvl::_1 == kLvl)), "Not allowed combination");
+ static_assert(!((PageSize::_64KB == kPageSize) && (TableLvl::_1 == kLvl)), "Not allowed combination");
+
+ public:
+  EntryDescriptor() {
+    *(reinterpret_cast<uint64_t*>(&data)) = 0;
+  }
+
+  EntryDescriptor(const types::Entry entry, const uint64_t address,
+                  const types::MemoryAttr mem_attr,
+                  const types::S2AP s2ap, const types::SH sh,
+                  const types::AF af, const types::Contiguous contiguous,
+                  const types::XN xn) {
+    *(reinterpret_cast<uint64_t*>(&data)) = 0;
+
+    data.entry = entry;
+    data.mem_attr = mem_attr;
+    data.s2ap = s2ap;
+    data.sh = sh;
+    data.af = af;
+    data.address = address;
+    data.contiguous = contiguous;
+    data.xn = xn;
+  }
+
+  static constexpr uint8_t AddressStartBit(const PageSize size, const TableLvl lvl) {
+    if (TableLvl::_3 == lvl) {
+      switch (size) {
+        case PageSize::_4KB: { return 12; }
+        case PageSize::_16KB: { return 14; }
+        case PageSize::_64KB: { return 16; }
+      }
+    }
+
+    switch (size) {
+      case PageSize::_4KB: { return (TableLvl::_2 == lvl) ? 21 : 30; }
+      case PageSize::_16KB: { return 25; }
+      case PageSize::_64KB: { return 29; }
+    }
+
+    return 0xff;
+  }
+
+  struct Layout {
+    types::Entry entry : 2; // @0-1 Always 1 for a block table
+    types::MemoryAttr mem_attr : 4; // @2-5
+    types::S2AP s2ap : 2; // @6-7
+    types::SH sh : 2; // @8-9
+    types::AF af : 1; // @10 Accessable flag
+    uint64_t _reserved1 : (AddressStartBit(kPageSize, kLvl) - 11); // @11-(X-1) Set to 0
+    uint64_t address : (48 - AddressStartBit(kPageSize, kLvl)); // @X-47 N Bits of address
+    uint64_t _reserved48_51 : 4; // @48-51 Set to 0
+    types::Contiguous contiguous : 1; // @52 Contiguous
+    uint64_t _reserved53 : 1; // @53 Set to 0
+    types::XN xn : 1; // @54 No execute if bit set
+    uint64_t _reserved55_63 : 9; // @55-63 Set to 0
+  };
+
+  Layout data;
+};
+
+static_assert(sizeof(EntryDescriptor<PageSize::_4KB, TableLvl::_1>) == 8, "EntryDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(EntryDescriptor<PageSize::_4KB, TableLvl::_2>) == 8, "EntryDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(EntryDescriptor<PageSize::_4KB, TableLvl::_3>) == 8, "EntryDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(EntryDescriptor<PageSize::_16KB, TableLvl::_2>) == 8, "EntryDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(EntryDescriptor<PageSize::_16KB, TableLvl::_3>) == 8, "EntryDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(EntryDescriptor<PageSize::_64KB, TableLvl::_2>) == 8, "EntryDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(EntryDescriptor<PageSize::_64KB, TableLvl::_3>) == 8, "EntryDescriptor should be 0x08 bytes in size");
+
 }  // namespace mm
 }  // namespace arm64
 }  // namespace arch
 
-#endif  // ARCH_ARM64_TRANSLATION_DESCRIPTOR_H_
+#endif  // ARCH_ARM64_MM_TRANSLATION_DESCRIPTOR_H_

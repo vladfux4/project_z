@@ -15,5 +15,5 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
 set(CMAKE_C_FLAGS "${PLATFORM_C_FLAGS} -g -Wall -nostdlib -ffreestanding -fdata-sections -ffunction-sections")
-set(CMAKE_CXX_FLAGS "${PLATFORM_C_FLAGS} -g -std=c++17 -Wall -ffreestanding -nostdlib -fno-exceptions -fno-rtti -fno-common -fno-builtin -fdata-sections -ffunction-sections")
+set(CMAKE_CXX_FLAGS "${PLATFORM_C_FLAGS} -W -Wall -Wextra -g -std=c++17 -ffreestanding -nodefaultlibs -nostdlib -fno-exceptions -fno-rtti -fno-common -fno-builtin -fdata-sections -ffunction-sections")
 SET(CMAKE_ASM_FLAGS "${PLATFORM_C_FLAGS} -g")
