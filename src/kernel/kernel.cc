@@ -16,29 +16,64 @@ GNU General Public License for more details.
 =============================================================================*/
 #include "kernel/kernel.h"
 
+#include <stdint.h>
+#include <cstddef>
+
+//dummy operators for c++ support
+extern "C" {
+void __cxa_pure_virtual(void) {
+  // We might want to write some diagnostics to uart in this case
+  while (true) {}
+}
+
+void* memset(void* dst, int val, size_t size) {
+  for (size_t i = 0; i < size; i++) {
+    ((uint8_t*)dst)[i] = (uint8_t)val;
+  }
+
+  return dst;
+}
+}
+
+void operator delete(void*, unsigned long) {}
+void operator delete(void*, unsigned long, std::align_val_t) {}
+
+// Default placement versions of operator new.
+inline void* operator new (size_t, void* __p) { return __p; }
+inline void* operator new[] (size_t, void* __p) { return __p; }
+
+// Default placement versions of operator delete.
+inline void operator delete (void*, void*) {}
+inline void operator delete[] (void*, void*) {}
+
 namespace kernel {
 
-Kernel::Kernel() {
+using namespace arch::arm64::mm;
+
+static uint8_t kernel_storage[sizeof(Kernel)];
+
+Kernel::Kernel() : mmu_() {
+  mmu_.Enable();
+
+  // address translation test code
+  uint64_t* ptr = reinterpret_cast<uint64_t*>(0x40);
+  uint64_t* v_ptr = reinterpret_cast<uint64_t*>(0xFFFFFFFFFFE00050); // mapped on 0x50
+
+  while (true) {
+    static uint64_t a = 0;
+    a++;
+    *ptr = a;
+    *v_ptr = a;
+  }
 }
 
 Kernel::~Kernel() {
 }
 
-}  // namespace kernel
-
 extern "C" {
 void KernelEntry() {
-  while (true) {}
+  new (reinterpret_cast<Kernel*>(kernel_storage)) Kernel();
 }
 }
 
-extern "C" {
-//dummy operators for c++ support
-void __cxa_pure_virtual(void) {
-  // We might want to write some diagnostics to uart in this case
-  while (true) {}
-}
-}
-
-void operator delete(void*, unsigned long) {
-}
+}  // namespace kernel

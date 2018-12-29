@@ -20,10 +20,14 @@ Generated
 #define ARCH_ARCH_TYPES_GEN_H_
 
 #include "arch/${CPU_ARCH}/mutex.h"
+#include "arch/${CPU_ARCH}/mm/mmu.h"
 
 namespace arch {
 
 typedef arch::${CPU_ARCH}::Mutex Mutex;
+namespace mm {
+typedef arch::${CPU_ARCH}::mm::MMU MMU;
+}
 
 }  // namespace arch
 

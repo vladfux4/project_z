@@ -30,7 +30,7 @@ class TranslationTable4K2MBlock {
  public:
 
   TranslationTable4K2MBlock();
-  inline uint8_t* GetBeginPtr();
+  inline uint8_t* GetBasePtr();
 
  private:
   static constexpr uint64_t kEntryCount = 512;
@@ -54,8 +54,36 @@ class TranslationTable4K2MBlock {
 
 static_assert(sizeof(TranslationTable4K2MBlock) == (512 * 8 * 3), "Wrong table size");
 
-inline uint8_t* TranslationTable4K2MBlock::GetBeginPtr() {
-  return  reinterpret_cast<uint8_t*>(table_lvl1_.data);
+inline uint8_t* TranslationTable4K2MBlock::GetBasePtr() {
+  return reinterpret_cast<uint8_t*>(table_lvl1_.data);
+}
+
+class TranslationTableVirtual4K {
+ public:
+  TranslationTableVirtual4K();
+  inline uint8_t* GetBasePtr();
+
+  struct Table4KDsc {
+    typedef TableDescriptor<PageSize::_4KB> Entry;
+    __attribute__((aligned(4096)))
+    Entry data[512];
+  };
+
+  struct TableLvl3 {
+    typedef EntryDescriptor<PageSize::_4KB, TableLvl::_3> Entry;
+    __attribute__((aligned(4096)))
+    Entry data[512];
+  };
+
+  Table4KDsc table_1_;
+  Table4KDsc table_2_;
+  TableLvl3 table_3_;
+};
+
+static_assert(sizeof(TranslationTableVirtual4K) == (512 * 8 * 3), "Wrong table size");
+
+inline uint8_t* TranslationTableVirtual4K::GetBasePtr() {
+  return reinterpret_cast<uint8_t*>(table_1_.data);
 }
 
 }  // namespace mm

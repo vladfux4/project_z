@@ -66,6 +66,29 @@ TranslationTable4K2MBlock::TranslationTable4K2MBlock()
         types::ENTRY_BLOCK, base,
         types::MEMORYATTR_DEVICE_NGNRNE,
         types::S2AP_NORMAL, types::SH_NON_SHAREABLE,
+              types::AF_ON, types::CONTIGUOUS_OFF, types::XN_OFF);
+}
+
+TranslationTableVirtual4K::TranslationTableVirtual4K()
+    : table_1_(),
+      table_2_(),
+      table_3_() {
+
+    table_1_.data[511] = Table4KDsc::Entry(
+        types::Entry::ENTRY_TABLE,
+        Table4KDsc::Entry::ToTableAddress(&(table_2_.data[0])),
+        types::PXN_OFF, types::XN_OFF, types::AP_NOEFFECT, types::NS_ON);
+
+    table_2_.data[511] = Table4KDsc::Entry(
+        types::Entry::ENTRY_TABLE,
+        Table4KDsc::Entry::ToTableAddress(&(table_3_.data[0])),
+        types::PXN_OFF, types::XN_OFF, types::AP_NOEFFECT, types::NS_ON);
+
+    // 4KB of ram memory memory 0xFFFFFFFFFFE00000
+    table_3_.data[0] = TableLvl3::Entry(
+        types::ENTRY_TABLE, 0,
+        types::MEMORYATTR_NORMAL,
+        types::S2AP_NORMAL, types::SH_INNER_SHAREABLE,
         types::AF_ON, types::CONTIGUOUS_OFF, types::XN_OFF);
 }
 

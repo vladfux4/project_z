@@ -14,22 +14,33 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
+#ifndef ARCH_ARM64_MM_MMU_H_
+#define ARCH_ARM64_MM_MMU_H_
 
-ENTRY(_start)
-SECTIONS
-{
- . = 0x80000;
- .start_text . : { *arch_start.s.o(.text) }
- .text : { *(.text) }
- . = ALIGN(4096);
- .data : { *(.data) }
- __bss_start = .;
- .bss : {
-   . = ALIGN(16);
-   *(.bss COMMON)
- }
- __bss_end = .;
- .arch_kernel_data : { *(.arch_kernel_data) }
-}
+#include "arch/arm64/mm/translation_tabel.h"
+#include "arch/arm64/mm/tcr.h"
 
-__bss_size = (__bss_end - __bss_start)>>3;
+namespace arch {
+namespace arm64 {
+namespace mm {
+
+/**
+ * @brief The Memory Management Unit class
+ */
+class MMU {
+ public:
+  MMU();
+
+  void Enable();
+
+ private:
+  TranslationTable4K2MBlock table_;
+  TranslationTableVirtual4K vtable_;
+  TCR tcr_;
+};
+
+}  // namespace mm
+}  // namespace arm64
+}  // namespace arch
+
+#endif  // ARCH_ARM64_MM_MMU_H_

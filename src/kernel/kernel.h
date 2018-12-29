@@ -17,6 +17,8 @@ GNU General Public License for more details.
 #ifndef KERNEL_KERNEL_H_
 #define KERNEL_KERNEL_H_
 
+#include "gen/arch_types_gen.h"
+
 namespace kernel {
 
 /**
@@ -33,6 +35,9 @@ class Kernel {
    * @brief Destructor
    */
   ~Kernel();
+
+ private:
+  arch::mm::MMU mmu_;
 };
 
 }  // namespace kernel

@@ -137,6 +137,13 @@ class TCR {
   constexpr TCR(const uint64_t raw);
 
   /**
+   * @brief Flush data to register
+   */
+  __attribute__((always_inline)) void Flush() {
+    asm volatile ("msr tcr_el1, %0; isb" : : "r" (raw_));
+  }
+
+  /**
    * @brief Convert to raw value
    *
    * @param value
