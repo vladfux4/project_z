@@ -38,8 +38,8 @@ void MMU::Enable() {
        (0xffull << (types::MEMORYATTR_NORMAL * 8)));
   asm volatile ("msr mair_el1, %0" : : "r" (r));
 
-  asm volatile ("msr ttbr0_el1, %0" : : "r" (table_.GetBasePtr()));
-  asm volatile ("msr ttbr1_el1, %0" : : "r" (vtable_.GetBasePtr()));
+  SetTTBR0(table_.GetBasePtr());
+  SetTTBR1(vtable_.GetBasePtr());
 
   // set TCR
   tcr_ =

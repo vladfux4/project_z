@@ -14,47 +14,27 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef ARCH_ARM64_MM_MMU_H_
-#define ARCH_ARM64_MM_MMU_H_
+#ifndef KERNEL_MM_ALLOCATOR_H_
+#define KERNEL_MM_ALLOCATOR_H_
 
-#include "arch/arm64/mm/translation_tabel.h"
-#include "arch/arm64/mm/tcr.h"
+#include <stdint.h>
+#include <cstddef>
 
-namespace arch {
-namespace arm64 {
+namespace kernel {
 namespace mm {
 
 /**
- * @brief The Memory Management Unit class
+ * @brief The Memory Pool class
  */
-class MMU {
+class Allocator {
  public:
-  MMU();
+  virtual ~Allocator() {}
 
-  void Enable();
-
- private:
-  /**
-   * @brief Set 0 translation table address
-   */
-  __attribute__((always_inline)) void SetTTBR0(uint8_t* address) {
-    asm volatile ("msr ttbr0_el1, %0" : : "r" (address));
-  }
-
-  /**
-   * @brief Set 1 translation table address
-   */
-  __attribute__((always_inline)) void SetTTBR1(uint8_t* address) {
-    asm volatile ("msr ttbr1_el1, %0" : : "r" (address));
-  }
-
-  TranslationTable4K2MBlock table_;
-  TranslationTableVirtual4K vtable_;
-  TCR tcr_;
+  virtual void* Allocate(const size_t size) = 0;
+  virtual void Deallocate(void* ptr) = 0;
 };
 
 }  // namespace mm
-}  // namespace arm64
-}  // namespace arch
+}  // namespace kernel
 
-#endif  // ARCH_ARM64_MM_MMU_H_
+#endif  // KERNEL_MM_ALLOCATOR_H_

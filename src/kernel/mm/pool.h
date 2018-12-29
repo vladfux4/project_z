@@ -18,6 +18,7 @@ GNU General Public License for more details.
 #define KERNEL_MM_POOL_H_
 
 #include <stdint.h>
+#include "kernel/mm/allocator.h"
 
 namespace kernel {
 namespace mm {
@@ -25,13 +26,19 @@ namespace mm {
 /**
  * @brief The Memory Pool class
  */
-template <class Item, class Index, Index kSize>
+template <class Item, class Index>
 class Pool {
  public:
   /**
    * @brief Constructor
    */
-  Pool();
+  Pool(Item* buffer, const Index size, Allocator& allocator);
+
+  /**
+   * @brief Destructor
+   */
+  ~Pool();
+
   /**
    * @brief Allocate item in pool
    *
@@ -68,29 +75,40 @@ class Pool {
     Index next;
   };
 
+  const Index kSize;
+  Allocator& allocator_;
   Index head_;
   Index free_items_;
-  IndexData index_list_[kSize];
-  uint8_t buffer_[kSize * sizeof(Item)];
+  IndexData* index_list_;
+  Item* buffer_;
 };
 
-template<class Item, class Index, Index kSize>
-Pool<Item, Index, kSize>::Pool()
-    : head_(0),
-      free_items_(kSize),
-      index_list_(),
-      buffer_() {
+template<class Item, class Index>
+Pool<Item, Index>::Pool(Item* buffer, const Index size,
+                        Allocator& allocator)
+    : kSize(size),
+      allocator_(allocator),
+      head_(0),
+      free_items_(size),
+      index_list_(nullptr),
+      buffer_(buffer) {
+  index_list_ = reinterpret_cast<IndexData*>(allocator.Allocate(kSize * sizeof(IndexData)));
   for (Index i = 0; i < kSize; ++i) {
     index_list_[i].next = (i + 1);
   }
 }
 
-template<class Item, class Index, Index kSize>
-Item* Pool<Item, Index, kSize>::Allocate() {
+template<class Item, class Index>
+Pool<Item, Index>::~Pool() {
+  allocator_.Deallocate(index_list_);
+}
+
+template<class Item, class Index>
+Item* Pool<Item, Index>::Allocate() {
   Item* ret_val = nullptr;
 
   if (0 != free_items_) {
-    ret_val = reinterpret_cast<Item*>(&buffer_[head_ * sizeof(Item)]);
+    ret_val = &buffer_[head_];
     free_items_--;
     head_ = index_list_[head_].next;
   }
@@ -98,9 +116,9 @@ Item* Pool<Item, Index, kSize>::Allocate() {
   return ret_val;
 }
 
-template<class Item, class Index, Index kSize>
-void Pool<Item, Index, kSize>::Deallocate(Item* item) {
-  Index index = (item - reinterpret_cast<Item*>(buffer_));
+template<class Item, class Index>
+void Pool<Item, Index>::Deallocate(Item* item) {
+  Index index = (item - buffer_);
   index_list_[index].next = head_;
   head_ = index;
   free_items_++;

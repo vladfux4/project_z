@@ -2,10 +2,19 @@
 #include "gmock/gmock.h"
 
 #include "kernel/mm/pool.h"
+#include "kernel/mm/allocator.h"
+
+class Allocator : public kernel::mm::Allocator {
+ public:
+  virtual void* Allocate(const size_t size) { return malloc(size); }
+  virtual void Deallocate(void* ptr) { free(ptr); }
+};
 
 class PoolTest : public ::testing::Test {
  protected:
-  PoolTest() {
+  PoolTest()
+      : buffer(reinterpret_cast<uint32_t*>(alloc.Allocate(sizeof(uint32_t) * 32))),
+        pool(buffer, 32, alloc) {
   }
 
   virtual ~PoolTest() {
@@ -36,7 +45,9 @@ class PoolTest : public ::testing::Test {
     }
   }
 
-  kernel::mm::Pool<uint32_t, size_t, 32> pool;
+  Allocator alloc;
+  uint32_t* buffer;
+  kernel::mm::Pool<uint32_t, size_t> pool;
   std::vector<std::pair<uint32_t*, uint32_t>> data;
   uint32_t index = 0;
 };
