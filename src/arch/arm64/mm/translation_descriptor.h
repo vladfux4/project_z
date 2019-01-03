@@ -20,6 +20,8 @@ GNU General Public License for more details.
 #include <stdint.h>
 #include <assert.h>
 
+#include "kernel/types.h"
+
 namespace arch {
 namespace arm64 {
 namespace mm {
@@ -31,15 +33,6 @@ enum class TableLvl {
  _1,
  _2,
  _3,
-};
-
-/**
- * @brief The Page size enum
- */
-enum class PageSize {
-  _4KB,
-  _16KB,
-  _64KB,
 };
 
 namespace types {
@@ -111,7 +104,7 @@ enum MemoryAttr {
 /**
  * @brief The Translation table descriptor template
  */
-template<PageSize kPageSize>
+template<kernel::mm::PageSize kPageSize>
 struct __attribute__((__packed__)) TableDescriptor {
  public:
   TableDescriptor() {
@@ -131,24 +124,28 @@ struct __attribute__((__packed__)) TableDescriptor {
     data.ns = ns;
   }
 
-  static constexpr uint8_t AddressStartBit(const PageSize size) {
-    switch (size) {
-      case PageSize::_4KB: { return 12; }
-      case PageSize::_16KB: { return 14; }
-      case PageSize::_64KB: { return 16; }
+  static constexpr uint8_t AddressStartBit() {
+    switch (kPageSize) {
+      case kernel::mm::PageSize::_4KB: { return 12; }
+      case kernel::mm::PageSize::_16KB: { return 14; }
+      case kernel::mm::PageSize::_64KB: { return 16; }
     }
 
     return 0xff;
   }
 
   static inline uint64_t ToTableAddress(const void* address) {
-    return (reinterpret_cast<uint64_t>(address) >> AddressStartBit(kPageSize));
+    return (reinterpret_cast<uint64_t>(address) >> AddressStartBit());
+  }
+
+  static inline void* ToAddress(const uint64_t address) {
+    return reinterpret_cast<void*>(address << AddressStartBit());
   }
 
   struct Layout {
     types::Entry entry : 2; // @0-1 entry type
-    uint64_t _reserved2 : (AddressStartBit(kPageSize) - 2); // @2-11 Set to 0
-    uint64_t address : (48 - AddressStartBit(kPageSize)); // @12-47 36 Bits of address
+    uint64_t _reserved2 : (AddressStartBit() - 2); // @2-11 Set to 0
+    uint64_t address : (48 - AddressStartBit()); // @12-47 36 Bits of address
     uint64_t _reserved48_58 : 11; // @48-58 Set to 0
     types::PXN pxn : 1; // @59 Never allow execution from a lower EL level
     types::XN xn : 1; // @60 Never allow translation from a lower EL level
@@ -159,17 +156,22 @@ struct __attribute__((__packed__)) TableDescriptor {
   Layout data;
 };
 
-static_assert(sizeof(TableDescriptor<PageSize::_4KB>) == 8, "TableDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(TableDescriptor<PageSize::_16KB>) == 8, "TableDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(TableDescriptor<PageSize::_64KB>) == 8, "TableDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(TableDescriptor<kernel::mm::PageSize::_4KB>) == 8,
+              "TableDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(TableDescriptor<kernel::mm::PageSize::_16KB>) == 8,
+              "TableDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(TableDescriptor<kernel::mm::PageSize::_64KB>) == 8,
+              "TableDescriptor should be 0x08 bytes in size");
 
 /**
  * @brief The Translation table entry descriptor template
  */
-template<PageSize kPageSize, TableLvl kLvl>
+template<kernel::mm::PageSize kPageSize, TableLvl kLvl>
 struct __attribute__((__packed__)) EntryDescriptor {
- static_assert(!((PageSize::_16KB == kPageSize) && (TableLvl::_1 == kLvl)), "Not allowed combination");
- static_assert(!((PageSize::_64KB == kPageSize) && (TableLvl::_1 == kLvl)), "Not allowed combination");
+ static_assert(!((kernel::mm::PageSize::_16KB == kPageSize) && (TableLvl::_1 == kLvl)),
+               "Not allowed combination");
+ static_assert(!((kernel::mm::PageSize::_64KB == kPageSize) && (TableLvl::_1 == kLvl)),
+               "Not allowed combination");
 
  public:
   EntryDescriptor() {
@@ -193,19 +195,19 @@ struct __attribute__((__packed__)) EntryDescriptor {
     data.xn = xn;
   }
 
-  static constexpr uint8_t AddressStartBit(const PageSize size, const TableLvl lvl) {
-    if (TableLvl::_3 == lvl) {
-      switch (size) {
-        case PageSize::_4KB: { return 12; }
-        case PageSize::_16KB: { return 14; }
-        case PageSize::_64KB: { return 16; }
+  static constexpr uint8_t AddressStartBit() {
+    if (TableLvl::_3 == kLvl) {
+      switch (kPageSize) {
+        case kernel::mm::PageSize::_4KB: { return 12; }
+        case kernel::mm::PageSize::_16KB: { return 14; }
+        case kernel::mm::PageSize::_64KB: { return 16; }
       }
     }
 
-    switch (size) {
-      case PageSize::_4KB: { return (TableLvl::_2 == lvl) ? 21 : 30; }
-      case PageSize::_16KB: { return 25; }
-      case PageSize::_64KB: { return 29; }
+    switch (kPageSize) {
+      case kernel::mm::PageSize::_4KB: { return (TableLvl::_2 == kLvl) ? 21 : 30; }
+      case kernel::mm::PageSize::_16KB: { return 25; }
+      case kernel::mm::PageSize::_64KB: { return 29; }
     }
 
     return 0xff;
@@ -217,8 +219,8 @@ struct __attribute__((__packed__)) EntryDescriptor {
     types::S2AP s2ap : 2; // @6-7
     types::SH sh : 2; // @8-9
     types::AF af : 1; // @10 Accessable flag
-    uint64_t _reserved1 : (AddressStartBit(kPageSize, kLvl) - 11); // @11-(X-1) Set to 0
-    uint64_t address : (48 - AddressStartBit(kPageSize, kLvl)); // @X-47 N Bits of address
+    uint64_t _reserved1 : (AddressStartBit() - 11); // @11-(X-1) Set to 0
+    uint64_t address : (48 - AddressStartBit()); // @X-47 N Bits of address
     uint64_t _reserved48_51 : 4; // @48-51 Set to 0
     types::Contiguous contiguous : 1; // @52 Contiguous
     uint64_t _reserved53 : 1; // @53 Set to 0
@@ -229,13 +231,20 @@ struct __attribute__((__packed__)) EntryDescriptor {
   Layout data;
 };
 
-static_assert(sizeof(EntryDescriptor<PageSize::_4KB, TableLvl::_1>) == 8, "EntryDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(EntryDescriptor<PageSize::_4KB, TableLvl::_2>) == 8, "EntryDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(EntryDescriptor<PageSize::_4KB, TableLvl::_3>) == 8, "EntryDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(EntryDescriptor<PageSize::_16KB, TableLvl::_2>) == 8, "EntryDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(EntryDescriptor<PageSize::_16KB, TableLvl::_3>) == 8, "EntryDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(EntryDescriptor<PageSize::_64KB, TableLvl::_2>) == 8, "EntryDescriptor should be 0x08 bytes in size");
-static_assert(sizeof(EntryDescriptor<PageSize::_64KB, TableLvl::_3>) == 8, "EntryDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(EntryDescriptor<kernel::mm::PageSize::_4KB, TableLvl::_1>) == 8,
+              "EntryDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(EntryDescriptor<kernel::mm::PageSize::_4KB, TableLvl::_2>) == 8,
+              "EntryDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(EntryDescriptor<kernel::mm::PageSize::_4KB, TableLvl::_3>) == 8,
+              "EntryDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(EntryDescriptor<kernel::mm::PageSize::_16KB, TableLvl::_2>) == 8,
+              "EntryDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(EntryDescriptor<kernel::mm::PageSize::_16KB, TableLvl::_3>) == 8,
+              "EntryDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(EntryDescriptor<kernel::mm::PageSize::_64KB, TableLvl::_2>) == 8,
+              "EntryDescriptor should be 0x08 bytes in size");
+static_assert(sizeof(EntryDescriptor<kernel::mm::PageSize::_64KB, TableLvl::_3>) == 8,
+              "EntryDescriptor should be 0x08 bytes in size");
 
 }  // namespace mm
 }  // namespace arm64

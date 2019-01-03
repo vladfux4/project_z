@@ -28,7 +28,7 @@ _start:
 2:  // cpu id == 0
 
     // set stack after our code
-    ldr x1, =kernel_stack_top
+    ldr x1, =_start
 
     // set up EL1
     mrs     x0, CurrentEL
@@ -87,8 +87,3 @@ _start:
     b       1b
 
 .section .arch_kernel_data
-/* stacks definition */
-.align 8
-kernel_stack:
-.skip 0x1000; /* 4kB of stack memory */
-kernel_stack_top = .;

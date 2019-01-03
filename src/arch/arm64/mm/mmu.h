@@ -17,7 +17,7 @@ GNU General Public License for more details.
 #ifndef ARCH_ARM64_MM_MMU_H_
 #define ARCH_ARM64_MM_MMU_H_
 
-#include "arch/arm64/mm/translation_tabel.h"
+#include "arch/arm64/mm/translation_table.h"
 #include "arch/arm64/mm/tcr.h"
 
 namespace arch {
@@ -29,29 +29,56 @@ namespace mm {
  */
 class MMU {
  public:
+  /**
+   * @brief Constructor
+   */
   MMU();
 
+  /**
+   * @brief Enable MMU
+   */
   void Enable();
+
+  /**
+   * @brief Set user space translation table
+   *
+   * @param address Table address
+   */
+  inline void SetUserTable(void* address);
+
+  /**
+   * @brief Set kernel space translation table
+   *
+   * @param address Table address
+   */
+  inline void SetKernelTable(void* address);
 
  private:
   /**
    * @brief Set 0 translation table address
    */
-  __attribute__((always_inline)) void SetTTBR0(uint8_t* address) {
+  __attribute__((always_inline)) void SetTTBR0(void* address) {
     asm volatile ("msr ttbr0_el1, %0" : : "r" (address));
   }
 
   /**
    * @brief Set 1 translation table address
    */
-  __attribute__((always_inline)) void SetTTBR1(uint8_t* address) {
+  __attribute__((always_inline)) void SetTTBR1(void* address) {
     asm volatile ("msr ttbr1_el1, %0" : : "r" (address));
   }
 
   TranslationTable4K2MBlock table_;
-  TranslationTableVirtual4K vtable_;
   TCR tcr_;
 };
+
+inline void MMU::SetUserTable(void* address) {
+  SetTTBR0(address);
+}
+
+inline void MMU::SetKernelTable(void* address) {
+  SetTTBR1(address);
+}
 
 }  // namespace mm
 }  // namespace arm64

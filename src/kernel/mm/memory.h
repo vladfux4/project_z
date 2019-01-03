@@ -14,42 +14,38 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef KERNEL_KERNEL_H_
-#define KERNEL_KERNEL_H_
+#ifndef KERNEL_MM_MEMORY_H_
+#define KERNEL_MM_MEMORY_H_
 
-#include "kernel/mm/memory.h"
+#include <stdint.h>
+#include <cstddef>
+
+#include "gen/arch_types_gen.h"
+
+#include "kernel/mm/boot_allocator.h"
+#include "kernel/mm/page_registry.h"
 
 namespace kernel {
+namespace mm {
 
 /**
- * @brief The Routine class
+ * @brief The Memory Pool class
  */
-class Kernel {
+class Memory {
  public:
-  /**
-   * @brief Constructor
-   */
-  Kernel();
+  Memory();
+  ~Memory();
 
-  /**
-   * @brief Run
-   */
-  void Routine();
-
-  /**
-   * @brief Destructor
-   */
-  ~Kernel();
-
- private:
-  /**
-   * @brief Init kernel
-   */
   void Init();
 
-  mm::Memory memory_;
+ private:
+  arch::mm::MMU mmu_;
+  BootAllocator boot_allocator_;
+  PageRegistry* pages_;
+  arch::arm64::mm::TranslationTable<PageSize::_4KB> v_table_;
 };
 
+}  // namespace mm
 }  // namespace kernel
 
-#endif  // KERNEL_KERNEL_H_
+#endif  // KERNEL_MM_MEMORY_H_

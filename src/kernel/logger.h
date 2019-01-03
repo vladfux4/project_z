@@ -14,42 +14,18 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef KERNEL_KERNEL_H_
-#define KERNEL_KERNEL_H_
+#ifndef KERNEL_LOGGER_H_
+#define KERNEL_LOGGER_H_
 
-#include "kernel/mm/memory.h"
+#include <stdint.h>
 
 namespace kernel {
 
-/**
- * @brief The Routine class
- */
-class Kernel {
- public:
-  /**
-   * @brief Constructor
-   */
-  Kernel();
+void InitPrint();
 
-  /**
-   * @brief Run
-   */
-  void Routine();
-
-  /**
-   * @brief Destructor
-   */
-  ~Kernel();
-
- private:
-  /**
-   * @brief Init kernel
-   */
-  void Init();
-
-  mm::Memory memory_;
-};
+void Print(const char* s);
+void Print(const char* s, const uint64_t d);
 
 }  // namespace kernel
 
-#endif  // KERNEL_KERNEL_H_
+#endif  // KERNEL_LOGGER_H_

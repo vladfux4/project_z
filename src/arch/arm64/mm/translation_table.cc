@@ -14,8 +14,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#include "arch/arm64/mm/translation_tabel.h"
-
+#include "arch/arm64/mm/translation_table.h"
 #include <cstddef>
 
 namespace arch {
@@ -29,7 +28,7 @@ TranslationTable4K2MBlock::TranslationTable4K2MBlock()
   for (size_t i = 0; i < kBlockTableCount; i++) {
     table_lvl1_.data[i] = Table4KLvl1::Entry(
         types::Entry::ENTRY_TABLE,
-        TableDescriptor<PageSize::_4KB>::ToTableAddress(&(block_table_lvl2_[i].data[0])),
+        Table4KLvl1::Entry::ToTableAddress(&(block_table_lvl2_[i].data[0])),
         types::PXN_OFF, types::XN_OFF, types::AP_NOEFFECT, types::NS_ON);
   }
 
@@ -67,29 +66,6 @@ TranslationTable4K2MBlock::TranslationTable4K2MBlock()
         types::MEMORYATTR_DEVICE_NGNRNE,
         types::S2AP_NORMAL, types::SH_NON_SHAREABLE,
               types::AF_ON, types::CONTIGUOUS_OFF, types::XN_OFF);
-}
-
-TranslationTableVirtual4K::TranslationTableVirtual4K()
-    : table_1_(),
-      table_2_(),
-      table_3_() {
-
-    table_1_.data[511] = Table4KDsc::Entry(
-        types::Entry::ENTRY_TABLE,
-        Table4KDsc::Entry::ToTableAddress(&(table_2_.data[0])),
-        types::PXN_OFF, types::XN_OFF, types::AP_NOEFFECT, types::NS_ON);
-
-    table_2_.data[511] = Table4KDsc::Entry(
-        types::Entry::ENTRY_TABLE,
-        Table4KDsc::Entry::ToTableAddress(&(table_3_.data[0])),
-        types::PXN_OFF, types::XN_OFF, types::AP_NOEFFECT, types::NS_ON);
-
-    // 4KB of ram memory memory 0xFFFFFFFFFFE00000
-    table_3_.data[0] = TableLvl3::Entry(
-        types::ENTRY_TABLE, 0,
-        types::MEMORYATTR_NORMAL,
-        types::S2AP_NORMAL, types::SH_INNER_SHAREABLE,
-        types::AF_ON, types::CONTIGUOUS_OFF, types::XN_OFF);
 }
 
 }  // namespace mm

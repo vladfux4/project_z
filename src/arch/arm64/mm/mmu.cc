@@ -22,7 +22,6 @@ namespace mm {
 
 MMU::MMU()
     : table_(),
-      vtable_(),
       tcr_() {
 }
 
@@ -39,7 +38,6 @@ void MMU::Enable() {
   asm volatile ("msr mair_el1, %0" : : "r" (r));
 
   SetTTBR0(table_.GetBasePtr());
-  SetTTBR1(vtable_.GetBasePtr());
 
   // set TCR
   tcr_ =
@@ -62,7 +60,7 @@ void MMU::Enable() {
   asm volatile ("isb; mrs %0, sctlr_el1" : "=r" (r));
   r |= 0xC00800;   // set mandatory reserved bits
   r |= (1<<12) |   // I, Instruction cache enable. This is an enable bit for instruction caches at EL0 and EL1
-       (1<<4)  |   // SA0, tack Alignment Check Enable for EL0
+       (1<<4)  |   // SA0, stack Alignment Check Enable for EL0
        (1<<3)  |   // SA, Stack Alignment Check Enable
        (1<<2)  |   // C, Data cache enable. This is an enable bit for data caches at EL0 and EL1
        (1<<1)  |   // A, Alignment check enable bit

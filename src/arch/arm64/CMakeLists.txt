@@ -5,7 +5,9 @@ set(SOURCE ${SOURCE}
   ${CMAKE_CURRENT_SOURCE_DIR}/mutex.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mutex.cc
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/mm/translation_tabel.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/mm/translation_table.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/mm/translation_table.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/mm/mmu.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/mmu.cc
 
   CACHE INTERNAL "" FORCE

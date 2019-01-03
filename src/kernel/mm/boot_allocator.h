@@ -14,42 +14,52 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef KERNEL_KERNEL_H_
-#define KERNEL_KERNEL_H_
+#ifndef KERNEL_MM_BOOT_ALLOCATOR_H_
+#define KERNEL_MM_BOOT_ALLOCATOR_H_
 
-#include "kernel/mm/memory.h"
+#include <stdint.h>
+#include <cstddef>
+
+#include "kernel/mm/allocator.h"
 
 namespace kernel {
+namespace mm {
 
 /**
- * @brief The Routine class
+ * @brief The Memory Pool class
  */
-class Kernel {
+class BootAllocator : public Allocator {
  public:
   /**
    * @brief Constructor
+   *
+   * @param start_ptr Memory area begin pointer
    */
-  Kernel();
-
-  /**
-   * @brief Run
-   */
-  void Routine();
+  BootAllocator(uint8_t* start_ptr);
 
   /**
    * @brief Destructor
    */
-  ~Kernel();
+  virtual ~BootAllocator();
+
+  /// INTERFACE_START(kernel::Allocator)
+  virtual void* Allocate(const size_t size);
+  virtual void* Allocate(const size_t size, const size_t aligned);
+  virtual void Deallocate(void* ptr);
+  /// INTERFACE_END(kernel::Allocator)
+
+  /**
+   * @brief Get end pointer
+   *
+   * @return pointer
+   */
+  inline const uint8_t* GetEnd() { return head_; }
 
  private:
-  /**
-   * @brief Init kernel
-   */
-  void Init();
-
-  mm::Memory memory_;
+  uint8_t* head_;
 };
 
+}  // namespace mm
 }  // namespace kernel
 
-#endif  // KERNEL_KERNEL_H_
+#endif  // KERNEL_MM_BOOT_ALLOCATOR_H_

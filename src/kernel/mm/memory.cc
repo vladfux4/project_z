@@ -14,42 +14,35 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef KERNEL_KERNEL_H_
-#define KERNEL_KERNEL_H_
-
 #include "kernel/mm/memory.h"
 
+extern uint8_t __kernel_boot_heap;
+
 namespace kernel {
+namespace mm {
 
-/**
- * @brief The Routine class
- */
-class Kernel {
- public:
-  /**
-   * @brief Constructor
-   */
-  Kernel();
+Memory::Memory()
+    : mmu_(),
+      boot_allocator_(&__kernel_boot_heap),
+      pages_(nullptr),
+      v_table_(boot_allocator_, 39) {
+}
 
-  /**
-   * @brief Run
-   */
-  void Routine();
+Memory::~Memory() {
+}
 
-  /**
-   * @brief Destructor
-   */
-  ~Kernel();
+void Memory::Init() {
+  v_table_.Map(
+      reinterpret_cast<void*>(0xFFFFFFFFFFE00000), reinterpret_cast<void*>(0x0000),
+      arch::arm64::mm::TranslationTable<PageSize::_4KB>::BlockSize::_4KB,
+      arch::arm64::mm::types::MEMORYATTR_NORMAL,
+      arch::arm64::mm::types::S2AP_NORMAL, arch::arm64::mm::types::SH_INNER_SHAREABLE,
+      arch::arm64::mm::types::AF_ON, arch::arm64::mm::types::CONTIGUOUS_OFF, arch::arm64::mm::types::XN_OFF);
 
- private:
-  /**
-   * @brief Init kernel
-   */
-  void Init();
+  mmu_.SetKernelTable(v_table_.GetBase());
 
-  mm::Memory memory_;
-};
+  mmu_.Enable();
+}
 
+}  // namespace mm
 }  // namespace kernel
-
-#endif  // KERNEL_KERNEL_H_

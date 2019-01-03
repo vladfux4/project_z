@@ -14,42 +14,33 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef KERNEL_KERNEL_H_
-#define KERNEL_KERNEL_H_
-
-#include "kernel/mm/memory.h"
+#include "kernel/mm/boot_allocator.h"
 
 namespace kernel {
+namespace mm {
 
-/**
- * @brief The Routine class
- */
-class Kernel {
- public:
-  /**
-   * @brief Constructor
-   */
-  Kernel();
+BootAllocator::BootAllocator(uint8_t* start_ptr)
+    : head_(start_ptr) {
+}
 
-  /**
-   * @brief Run
-   */
-  void Routine();
+BootAllocator::~BootAllocator() {
+}
 
-  /**
-   * @brief Destructor
-   */
-  ~Kernel();
+void* BootAllocator::Allocate(const size_t size) {
+  uint8_t* ret_val = head_;
+  head_ += size;
+  return  ret_val;
+}
 
- private:
-  /**
-   * @brief Init kernel
-   */
-  void Init();
+void *BootAllocator::Allocate(const size_t size, const size_t aligned) {
+  while (0 != (reinterpret_cast<size_t>(head_) % aligned)) { head_++; }
+  uint8_t* ret_val = head_;
+  head_ += size;
+  return  ret_val;
+}
 
-  mm::Memory memory_;
-};
+void BootAllocator::Deallocate(void* ptr) { //delete is not supported
+}
 
+}  // namespace mm
 }  // namespace kernel
-
-#endif  // KERNEL_KERNEL_H_

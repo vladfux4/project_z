@@ -24,13 +24,39 @@ namespace kernel {
 namespace mm {
 
 /**
- * @brief The Memory Pool class
+ * @brief The Allocator class
  */
 class Allocator {
  public:
+  /**
+   * @brief Destructor
+   */
   virtual ~Allocator() {}
 
+  /**
+   * @brief Allocate
+   *
+   * @param size Size in bytes
+   *
+   * @return pointer
+   */
   virtual void* Allocate(const size_t size) = 0;
+
+  /**
+   * @brief Allocate
+   *
+   * @param size Size in bytes
+   * @param aligned Aligment in bytes
+   *
+   * @return pointer
+   */
+  virtual void* Allocate(const size_t size, const size_t aligned) = 0;
+
+  /**
+   * @brief Deallocate
+   *
+   * @param ptr Pointer on allocated area
+   */
   virtual void Deallocate(void* ptr) = 0;
 };
 

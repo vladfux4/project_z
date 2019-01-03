@@ -14,42 +14,39 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef KERNEL_KERNEL_H_
-#define KERNEL_KERNEL_H_
+#ifndef KERNEL_MM_PAGE_MAP_
+#define KERNEL_MM_PAGE_MAP_
 
-#include "kernel/mm/memory.h"
+#include <stdint.h>
+#include <cstddef>
+
+#include "kernel/mm/allocator.h"
+#include "kernel/config.h"
+
+#include "kernel/mm/pool.h"
 
 namespace kernel {
+namespace mm {
 
-/**
- * @brief The Routine class
- */
-class Kernel {
- public:
-  /**
-   * @brief Constructor
-   */
-  Kernel();
-
-  /**
-   * @brief Run
-   */
-  void Routine();
-
-  /**
-   * @brief Destructor
-   */
-  ~Kernel();
-
- private:
-  /**
-   * @brief Init kernel
-   */
-  void Init();
-
-  mm::Memory memory_;
+struct Page {
+  uint8_t data;
 };
 
+/**
+ * @brief The Page registry class
+ */
+class PageRegistry {
+ public:
+  PageRegistry(const uint8_t* begin, const uint8_t* end,
+               Allocator& alloc);
+
+ private:
+  typedef Pool<Page, size_t> PagePool;
+
+  PagePool* page_pool_;
+};
+
+}  // namespace mm
 }  // namespace kernel
 
-#endif  // KERNEL_KERNEL_H_
+#endif  // KERNEL_MM_PAGE_MAP_

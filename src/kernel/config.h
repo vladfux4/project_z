@@ -14,42 +14,17 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef KERNEL_KERNEL_H_
-#define KERNEL_KERNEL_H_
+#ifndef KERNEL_CONFIG_H_
+#define KERNEL_CONFIG_H_
 
-#include "kernel/mm/memory.h"
+#include "kernel/types.h"
 
 namespace kernel {
+namespace mm {
 
-/**
- * @brief The Routine class
- */
-class Kernel {
- public:
-  /**
-   * @brief Constructor
-   */
-  Kernel();
+constexpr PageSize PAGE_SIZE = PageSize::_4KB;
 
-  /**
-   * @brief Run
-   */
-  void Routine();
-
-  /**
-   * @brief Destructor
-   */
-  ~Kernel();
-
- private:
-  /**
-   * @brief Init kernel
-   */
-  void Init();
-
-  mm::Memory memory_;
-};
-
+}  // namespace mm
 }  // namespace kernel
 
-#endif  // KERNEL_KERNEL_H_
+#endif  // KERNEL_CONFIG_H_

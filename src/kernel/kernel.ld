@@ -24,12 +24,14 @@ SECTIONS
  . = ALIGN(4096);
  .data : { *(.data) }
  __bss_start = .;
+ . = ALIGN(4096);
  .bss : {
    . = ALIGN(16);
    *(.bss COMMON)
  }
  __bss_end = .;
  .arch_kernel_data : { *(.arch_kernel_data) }
+ __kernel_boot_heap = .;
 }
 
 __bss_size = (__bss_end - __bss_start)>>3;
