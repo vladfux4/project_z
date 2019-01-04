@@ -7,6 +7,7 @@
 class Allocator : public kernel::mm::Allocator {
  public:
   virtual void* Allocate(const size_t size) { return malloc(size); }
+  virtual void* Allocate(const size_t size, const size_t aligned) { return malloc(size); }
   virtual void Deallocate(void* ptr) { free(ptr); }
 };
 
