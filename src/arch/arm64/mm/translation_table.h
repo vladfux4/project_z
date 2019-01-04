@@ -245,7 +245,7 @@ TranslationTableBase<Config>::TranslationTableBase(
     : alloc_(alloc),
       address_length_(address_length),
       root_table_(nullptr) {
-  kernel::Print("Constructor");
+  DDBG_LOG_STR("Constructor");
 
   root_table_ = CreateTable();
 }
@@ -274,8 +274,8 @@ void TranslationTableBase<Config>::Map(
     size_t index = Config::CalcIndex(v_ptr, level);
     Table* next_level_table = reinterpret_cast<Table*>(Table::Entry::ToAddress(table->data[index].data.address));
     if (nullptr == next_level_table) {
-      kernel::Print("current level: ", level);
-      kernel::Print("table index: ", index);
+      DDBG_LOG_HEX("current level: ", level);
+      DDBG_LOG_HEX("table index: ", index);
 
       next_level_table = CreateTable();
       table->data[index] = typename Table::Entry(
@@ -295,9 +295,9 @@ void TranslationTableBase<Config>::Map(
   auto entry_type = (Config::kMinBlockSize == size) ?
                      types::ENTRY_TABLE : types::ENTRY_BLOCK;
 
-  kernel::Print("New etry. table level: ", level);
-  kernel::Print("entry index: ", index);
-  kernel::Print("address: ", address);
+  DDBG_LOG_HEX("New etry. table level: ", level);
+  DDBG_LOG_HEX("entry index: ", index);
+  DDBG_LOG_HEX("address: ", address);
 
   if (3 == level) {
     typedef EntryDescriptor<Config::kPageSize, TableLvl::_1> Entry;
@@ -318,40 +318,13 @@ template<class Config>
 typename TranslationTableBase<Config>::Table*
 TranslationTableBase<Config>::CreateTable() {
   auto table = reinterpret_cast<Table*>(alloc_.Allocate(sizeof(Table), sizeof(Table)));
-  kernel::Print("New table ptr: ", reinterpret_cast<uint64_t>(table));
+  DDBG_LOG_HEX("New table ptr: ", reinterpret_cast<uint64_t>(table));
 
   for (size_t i = 0; i < TableEntryCount(kernel::mm::PageSize::_4KB); i++) {
     table->data[i] = typename Table::Entry();
   }
 
   return table;
-}
-
-
-
-class TranslationTable4K2MBlock {
- public:
-
-  TranslationTable4K2MBlock();
-  inline uint8_t* GetBasePtr();
-
- private:
-  static constexpr uint64_t kEntryCount = 512;
-  static constexpr uint64_t kBlockTableCount = 2;
-
-  typedef DescriptorTable<kernel::mm::PageSize::_4KB> Table4KLvl1;
-  typedef EntryTable<kernel::mm::PageSize::_4KB, TableLvl::_2> Table2MBlockLvl2;
-
-    __attribute__((aligned(4096)))
-  Table4KLvl1 table_lvl1_;
-    __attribute__((aligned(4096)))
-  Table2MBlockLvl2 block_table_lvl2_[kBlockTableCount];
-};
-
-static_assert(sizeof(TranslationTable4K2MBlock) == (512 * 8 * 3), "Wrong table size");
-
-inline uint8_t* TranslationTable4K2MBlock::GetBasePtr() {
-  return reinterpret_cast<uint8_t*>(table_lvl1_.data);
 }
 
 }  // namespace mm

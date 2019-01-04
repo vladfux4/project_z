@@ -15,13 +15,14 @@ GNU General Public License for more details.
 
 =============================================================================*/
 #include "arch/arm64/mm/mmu.h"
+#include "arch/arm64/mm/translation_descriptor.h"
 
 namespace arch {
 namespace arm64 {
 namespace mm {
 
-MMU::MMU()
-    : table_(),
+MMU::MMU(const uint8_t address_length)
+    : kAddressLength(address_length),
       tcr_() {
 }
 
@@ -37,8 +38,6 @@ void MMU::Enable() {
        (0xffull << (types::MEMORYATTR_NORMAL * 8)));
   asm volatile ("msr mair_el1, %0" : : "r" (r));
 
-  SetTTBR0(table_.GetBasePtr());
-
   // set TCR
   tcr_ =
       TCR::ToRaw(TCR::IPS::_32_BIT) |
@@ -47,13 +46,13 @@ void MMU::Enable() {
       TCR::ToRaw(TCR::ORGN1::WRITE_BACK_CACHEABLE) |
       TCR::ToRaw(TCR::IRGN1::WRITE_BACK_CACHEABLE) |
       TCR::ToRaw(TCR::EPD1::WALK) |
-      TCR::ToT1SZRaw(39) |
+      TCR::ToT1SZRaw(kAddressLength) |
       TCR::ToRaw(TCR::TG0::_4KB) |
       TCR::ToRaw(TCR::SH0::INNER_SHAREABLE) |
       TCR::ToRaw(TCR::ORGN0::WRITE_BACK_CACHEABLE) |
       TCR::ToRaw(TCR::IRGN0::WRITE_BACK_CACHEABLE) |
       TCR::ToRaw(TCR::EPD0::WALK) |
-      TCR::ToT0SZRaw(39);
+      TCR::ToT0SZRaw(kAddressLength);
   tcr_.Flush();
 
   // toggle some bits in system control register to enable page translation

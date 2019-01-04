@@ -21,9 +21,10 @@ GNU General Public License for more details.
 #include <cstddef>
 
 #include "gen/arch_types_gen.h"
-
+#include "arch/arm64/mm/translation_table.h"
 #include "kernel/mm/boot_allocator.h"
 #include "kernel/mm/page_registry.h"
+#include "kernel/config.h"
 
 namespace kernel {
 namespace mm {
@@ -39,10 +40,13 @@ class Memory {
   void Init();
 
  private:
+  typedef arch::arm64::mm::TranslationTable<KERNEL_PAGE_SIZE> TranslationTable;
+
   arch::mm::MMU mmu_;
   BootAllocator boot_allocator_;
   PageRegistry* pages_;
-  arch::arm64::mm::TranslationTable<PageSize::_4KB> v_table_;
+  TranslationTable p_table_;
+  TranslationTable v_table_;
 };
 
 }  // namespace mm

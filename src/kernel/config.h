@@ -17,12 +17,15 @@ GNU General Public License for more details.
 #ifndef KERNEL_CONFIG_H_
 #define KERNEL_CONFIG_H_
 
+#include <stdint.h>
+#include <stdio.h>
 #include "kernel/types.h"
 
 namespace kernel {
 namespace mm {
 
-constexpr PageSize PAGE_SIZE = PageSize::_4KB;
+constexpr PageSize KERNEL_PAGE_SIZE = PageSize::_4KB;
+constexpr uint8_t KERNEL_ADDRESS_LENGTH = 39;
 
 }  // namespace mm
 }  // namespace kernel

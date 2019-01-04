@@ -17,7 +17,6 @@ GNU General Public License for more details.
 #ifndef ARCH_ARM64_MM_MMU_H_
 #define ARCH_ARM64_MM_MMU_H_
 
-#include "arch/arm64/mm/translation_table.h"
 #include "arch/arm64/mm/tcr.h"
 
 namespace arch {
@@ -31,8 +30,10 @@ class MMU {
  public:
   /**
    * @brief Constructor
+   *
+   * @param address_length Address length
    */
-  MMU();
+  MMU(const uint8_t address_length);
 
   /**
    * @brief Enable MMU
@@ -68,7 +69,7 @@ class MMU {
     asm volatile ("msr ttbr1_el1, %0" : : "r" (address));
   }
 
-  TranslationTable4K2MBlock table_;
+  const uint8_t kAddressLength;
   TCR tcr_;
 };
 

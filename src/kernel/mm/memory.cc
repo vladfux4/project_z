@@ -22,22 +22,70 @@ namespace kernel {
 namespace mm {
 
 Memory::Memory()
-    : mmu_(),
+    : mmu_(KERNEL_ADDRESS_LENGTH),
       boot_allocator_(&__kernel_boot_heap),
       pages_(nullptr),
-      v_table_(boot_allocator_, 39) {
+      p_table_(boot_allocator_, KERNEL_ADDRESS_LENGTH),
+      v_table_(boot_allocator_, KERNEL_ADDRESS_LENGTH) {
 }
 
 Memory::~Memory() {
 }
 
 void Memory::Init() {
+  using namespace arch::arm64::mm;
+
+  size_t base = 0;
+  // 880Mb of ram
+  for (; base < 440; base++) { //4440
+    void* address = reinterpret_cast<void*>(base << 21);
+    p_table_.Map(
+        address, address,
+        TranslationTable::BlockSize::_2MB,
+        types::MEMORYATTR_NORMAL,
+        types::S2AP_NORMAL, types::SH_INNER_SHAREABLE,
+        types::AF_ON, types::CONTIGUOUS_OFF, types::XN_OFF);
+  }
+
+  // VC ram up to 0x3F000000
+  for (; base < 512 - 8; base++) {
+    void* address = reinterpret_cast<void*>(base << 21);
+    p_table_.Map(
+        address, address,
+        TranslationTable::BlockSize::_2MB,
+        types::MEMORYATTR_NORMAL_NC,
+        types::S2AP_NORMAL, types::SH_NON_SHAREABLE,
+        types::AF_ON, types::CONTIGUOUS_OFF, types::XN_OFF);
+  }
+
+  // 16 MB peripherals at 0x3F000000 - 0x40000000
+  for (; base < 512; base++) {
+    void* address = reinterpret_cast<void*>(base << 21);
+    p_table_.Map(
+        address, address,
+        TranslationTable::BlockSize::_2MB,
+        types::MEMORYATTR_DEVICE_NGNRNE,
+        types::S2AP_NORMAL, types::SH_NON_SHAREABLE,
+        types::AF_ON, types::CONTIGUOUS_OFF, types::XN_OFF);
+  }
+
+  // 2 MB for mailboxes at 0x40000000
+  void* address = reinterpret_cast<void*>(base << 21);
+  p_table_.Map(
+        address, address,
+        TranslationTable::BlockSize::_2MB,
+        types::MEMORYATTR_DEVICE_NGNRNE,
+        types::S2AP_NORMAL, types::SH_NON_SHAREABLE,
+        types::AF_ON, types::CONTIGUOUS_OFF, types::XN_OFF);
+
+  mmu_.SetUserTable(p_table_.GetBase());
+
   v_table_.Map(
       reinterpret_cast<void*>(0xFFFFFFFFFFE00000), reinterpret_cast<void*>(0x0000),
-      arch::arm64::mm::TranslationTable<PageSize::_4KB>::BlockSize::_4KB,
-      arch::arm64::mm::types::MEMORYATTR_NORMAL,
-      arch::arm64::mm::types::S2AP_NORMAL, arch::arm64::mm::types::SH_INNER_SHAREABLE,
-      arch::arm64::mm::types::AF_ON, arch::arm64::mm::types::CONTIGUOUS_OFF, arch::arm64::mm::types::XN_OFF);
+      TranslationTable::BlockSize::_4KB,
+      types::MEMORYATTR_NORMAL,
+      types::S2AP_NORMAL, types::SH_INNER_SHAREABLE,
+      types::AF_ON, types::CONTIGUOUS_OFF, types::XN_OFF);
 
   mmu_.SetKernelTable(v_table_.GetBase());
 
