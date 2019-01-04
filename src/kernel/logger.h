@@ -22,11 +22,9 @@ GNU General Public License for more details.
 #define DDEBUG
 
 #ifdef DDEBUG
-#define DDBG_LOG_STR(S) kernel::Print(S)
-#define DDBG_LOG_HEX(S, X) kernel::Print(S, X)
+#define DDBG_LOG(fmt, ...) kernel::Print(fmt, ##__VA_ARGS__)
 #else
-#define DDBG_LOG_STR(S)
-#define DDBG_LOG_HEX(S, X)
+#define DDBG_LOG(fmt)
 #endif
 
 namespace kernel {

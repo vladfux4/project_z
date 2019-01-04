@@ -68,6 +68,7 @@ void Kernel::Routine() {
     a++;
     *ptr = a;
     *v_ptr = a;
+    Print("Test");
   }
 }
 

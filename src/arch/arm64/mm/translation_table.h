@@ -245,7 +245,7 @@ TranslationTableBase<Config>::TranslationTableBase(
     : alloc_(alloc),
       address_length_(address_length),
       root_table_(nullptr) {
-  DDBG_LOG_STR("Constructor");
+  DDBG_LOG("Constructor");
 
   root_table_ = CreateTable();
 }
@@ -274,8 +274,8 @@ void TranslationTableBase<Config>::Map(
     size_t index = Config::CalcIndex(v_ptr, level);
     Table* next_level_table = reinterpret_cast<Table*>(Table::Entry::ToAddress(table->data[index].data.address));
     if (nullptr == next_level_table) {
-      DDBG_LOG_HEX("current level: ", level);
-      DDBG_LOG_HEX("table index: ", index);
+      DDBG_LOG("current level: ", level);
+      DDBG_LOG("table index: ", index);
 
       next_level_table = CreateTable();
       table->data[index] = typename Table::Entry(
@@ -295,9 +295,9 @@ void TranslationTableBase<Config>::Map(
   auto entry_type = (Config::kMinBlockSize == size) ?
                      types::ENTRY_TABLE : types::ENTRY_BLOCK;
 
-  DDBG_LOG_HEX("New etry. table level: ", level);
-  DDBG_LOG_HEX("entry index: ", index);
-  DDBG_LOG_HEX("address: ", address);
+  DDBG_LOG("New etry. table level: ", level);
+  DDBG_LOG("entry index: ", index);
+  DDBG_LOG("address: ", address);
 
   if (3 == level) {
     typedef EntryDescriptor<Config::kPageSize, TableLvl::_1> Entry;
@@ -318,7 +318,7 @@ template<class Config>
 typename TranslationTableBase<Config>::Table*
 TranslationTableBase<Config>::CreateTable() {
   auto table = reinterpret_cast<Table*>(alloc_.Allocate(sizeof(Table), sizeof(Table)));
-  DDBG_LOG_HEX("New table ptr: ", reinterpret_cast<uint64_t>(table));
+  DDBG_LOG("New table ptr: ", reinterpret_cast<uint64_t>(table));
 
   for (size_t i = 0; i < TableEntryCount(kernel::mm::PageSize::_4KB); i++) {
     table->data[i] = typename Table::Entry();
