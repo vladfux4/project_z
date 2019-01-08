@@ -46,6 +46,12 @@ enum Entry {
   ENTRY_TABLE = 0b11U,
 };
 
+/**
+ * @brief The access permission mode enum
+ *
+ * The access read/write permission bits control
+ * access to the corresponding memory region
+ */
 enum AP {
   AP_NOEFFECT = 0b00U,
   AP_NO_EL0 = 0b01U,
@@ -53,21 +59,47 @@ enum AP {
   AP_NO_WRITE_EL0_READ = 0b11U,
 };
 
-enum PXN {
-  PXN_OFF = 0,
-  PXN_ON = 1,
-};
-
+/**
+ * @brief The execute never bit enum
+ */
 enum XN {
-  XN_OFF = 0,
-  XN_ON = 1,
+  XN_EXECUTE = 0,
+  XN_NO_EXECUTE = 1,
 };
 
+/**
+ * @brief The privileged execute never bit enum
+ */
+enum PXN {
+  PXN_EXECUTE = 0,
+  PXN_NO_EXECUTE = 1,
+};
+
+/**
+ * @brief The NSTable bit enum
+ *
+ * NSTable bit indicates whether the table identified in the descriptor
+ * is in Secure or Non-secure memory
+ */
+enum NSTable {
+  NSTABLE_SECURE = 0,
+  NSTABLE_NON_SECURE = 1,
+};
+
+/**
+ * @brief The NS bit enum
+ *
+ * NS bit indicates whether the descriptor refers to the Secure or
+ * the Non-secure address map
+ */
 enum NS {
-  NS_OFF = 0,
-  NS_ON = 1,
+  NS_SECURE = 0,
+  NS_NON_SECURE = 1,
 };
 
+/**
+ * @brief The S2AP data access permissions enum
+ */
 enum S2AP {
   S2AP_NORMAL = 0,
   S2AP_NOREAD_EL0 = 1,
@@ -76,15 +108,28 @@ enum S2AP {
 
 enum SH {
   SH_NON_SHAREABLE = 0,
-  SH_OUTER_SHAREABLE = 2, //   Outter shareable
-  SH_INNER_SHAREABLE = 3, //   Inner shareable
+  SH_OUTER_SHAREABLE = 2,
+  SH_INNER_SHAREABLE = 3,
 };
 
+/**
+ * @brief The AF bit enum
+ *
+ * The Access flag indicates when a page or section of memory is accessed
+ * for the first time since the Access flag in the corresponding
+ * translation table descriptor was set to 0
+ */
 enum AF {
-  AF_OFF = 0,
-  AF_ON = 1,
+  AF_HANDLE = 0,
+  AF_IGNORE = 1,
 };
 
+/**
+ * @brief The Contiguous bit enum
+ *
+ * A hint bit indicating that the translation table entry is one of
+ * a contiguous set or entries, that might be cached in a single TLB entry
+ */
 enum Contiguous {
   CONTIGUOUS_OFF = 0,
   CONTIGUOUS_ON = 1,
@@ -97,7 +142,6 @@ enum MemoryAttr {
   MEMORYATTR_NORMAL_NC = 3,
   MEMORYATTR_NORMAL = 4,
 };
-
 
 }  // namespace types
 
@@ -113,7 +157,7 @@ struct __attribute__((__packed__)) TableDescriptor {
 
   TableDescriptor(const types::Entry entry, const uint64_t address,
                   const types::PXN pxn, const types::XN xn,
-                  const types::AP ap, const types::NS ns) {
+                  const types::AP ap, const types::NSTable ns) {
     *(reinterpret_cast<uint64_t*>(&data)) = 0;
 
     data.entry = entry;
@@ -150,7 +194,7 @@ struct __attribute__((__packed__)) TableDescriptor {
     types::PXN pxn : 1; // @59 Never allow execution from a lower EL level
     types::XN xn : 1; // @60 Never allow translation from a lower EL level
     types::AP ap : 2; // @61-62 AP Table control .. see enumerate options
-    types::NS ns : 1; // @63 Secure state, for accesses from Non-secure state this bit is RES0 and is ignored
+    types::NSTable ns : 1; // @63 Secure state, for accesses from Non-secure state this bit is RES0 and is ignored
   };
 
   Layout data;

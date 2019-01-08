@@ -44,7 +44,7 @@ void Memory::Init() {
         TranslationTable::BlockSize::_2MB,
         types::MEMORYATTR_NORMAL,
         types::S2AP_NORMAL, types::SH_INNER_SHAREABLE,
-        types::AF_ON, types::CONTIGUOUS_OFF, types::XN_OFF);
+        types::AF_IGNORE, types::CONTIGUOUS_OFF, types::XN_EXECUTE);
   }
 
   // VC ram up to 0x3F000000
@@ -55,7 +55,7 @@ void Memory::Init() {
         TranslationTable::BlockSize::_2MB,
         types::MEMORYATTR_NORMAL_NC,
         types::S2AP_NORMAL, types::SH_NON_SHAREABLE,
-        types::AF_ON, types::CONTIGUOUS_OFF, types::XN_OFF);
+        types::AF_IGNORE, types::CONTIGUOUS_OFF, types::XN_EXECUTE);
   }
 
   // 16 MB peripherals at 0x3F000000 - 0x40000000
@@ -66,7 +66,7 @@ void Memory::Init() {
         TranslationTable::BlockSize::_2MB,
         types::MEMORYATTR_DEVICE_NGNRNE,
         types::S2AP_NORMAL, types::SH_NON_SHAREABLE,
-        types::AF_ON, types::CONTIGUOUS_OFF, types::XN_OFF);
+        types::AF_IGNORE, types::CONTIGUOUS_OFF, types::XN_EXECUTE);
   }
 
   // 2 MB for mailboxes at 0x40000000
@@ -76,7 +76,7 @@ void Memory::Init() {
         TranslationTable::BlockSize::_2MB,
         types::MEMORYATTR_DEVICE_NGNRNE,
         types::S2AP_NORMAL, types::SH_NON_SHAREABLE,
-        types::AF_ON, types::CONTIGUOUS_OFF, types::XN_OFF);
+        types::AF_IGNORE, types::CONTIGUOUS_OFF, types::XN_EXECUTE);
 
   mmu_.SetUserTable(p_table_.GetBase());
 
@@ -85,7 +85,7 @@ void Memory::Init() {
       TranslationTable::BlockSize::_4KB,
       types::MEMORYATTR_NORMAL,
       types::S2AP_NORMAL, types::SH_INNER_SHAREABLE,
-      types::AF_ON, types::CONTIGUOUS_OFF, types::XN_OFF);
+      types::AF_IGNORE, types::CONTIGUOUS_OFF, types::XN_EXECUTE);
 
   mmu_.SetKernelTable(v_table_.GetBase());
 

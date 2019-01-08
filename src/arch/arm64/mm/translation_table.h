@@ -281,7 +281,8 @@ void TranslationTableBase<Config>::Map(
       table->data[index] = typename Table::Entry(
         types::Entry::ENTRY_TABLE,
         Table::Entry::ToTableAddress(next_level_table),
-        types::PXN_OFF, types::XN_OFF, types::AP_NOEFFECT, types::NS_ON);
+        types::PXN_EXECUTE, types::XN_EXECUTE, types::AP_NOEFFECT,
+        types::NSTABLE_NON_SECURE);
     }
 
     level--;
