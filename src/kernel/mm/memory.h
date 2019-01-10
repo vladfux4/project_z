@@ -40,10 +40,10 @@ class Memory {
   void Init();
 
  private:
-  typedef arch::arm64::mm::TranslationTable<KERNEL_PAGE_SIZE> TranslationTable;
+  typedef arch::arm64::mm::TranslationTable<KERNEL_PAGE_SIZE, BootAllocator> TranslationTable;
 
   arch::mm::MMU mmu_;
-  BootAllocator boot_allocator_;
+  TranslationTable::Allocator boot_allocator_;
   PageRegistry* pages_;
   TranslationTable p_table_;
   TranslationTable v_table_;

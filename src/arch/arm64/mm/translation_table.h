@@ -174,11 +174,12 @@ class TranslationTableConfig<kernel::mm::PageSize::_4KB> {
   }
 };
 
-template <class Config>
+template <class Config, template <class> class AllocatorBase>
 class TranslationTableBase {
  public:
   typedef typename Config::BlockSize BlockSize;
   typedef typename Config::Table Table;
+  typedef AllocatorBase<Table> Allocator;
 
   /**
    * @brief Constructor
@@ -186,7 +187,7 @@ class TranslationTableBase {
    * @param alloc Reference on allocator
    * @param address_length Address length
    */
-  TranslationTableBase(kernel::mm::Allocator& alloc,
+  TranslationTableBase(Allocator& alloc,
                        const uint8_t address_length);
 
   /**
@@ -225,22 +226,26 @@ class TranslationTableBase {
   Table* CreateTable();
 
  private:
-  kernel::mm::Allocator& alloc_;
+  Allocator& alloc_;
   uint8_t address_length_;
   Table* root_table_;
 };
 
-template<kernel::mm::PageSize kSize>
-class TranslationTable : public TranslationTableBase<TranslationTableConfig<kSize>> {
+template<kernel::mm::PageSize kSize, template <class> class AllocatorBase>
+class TranslationTable
+          : public TranslationTableBase<TranslationTableConfig<kSize>, AllocatorBase> {
  public:
-  TranslationTable(kernel::mm::Allocator& alloc,
-                   const uint8_t address_length)
-      : TranslationTableBase<TranslationTableConfig<kSize>>(alloc, address_length) {}
+  typedef typename TranslationTableBase<TranslationTableConfig<kSize>,
+                                        AllocatorBase>::Allocator Allocator;
+
+  TranslationTable(Allocator& alloc, const uint8_t address_length)
+      : TranslationTableBase<TranslationTableConfig<kSize>,
+                             AllocatorBase>(alloc, address_length) {}
 };
 
-template<class Config>
-TranslationTableBase<Config>::TranslationTableBase(
-    kernel::mm::Allocator& alloc,
+template <class Config, template <class> class AllocatorBase>
+TranslationTableBase<Config, AllocatorBase>::TranslationTableBase(
+    Allocator& alloc,
     const uint8_t address_length)
     : alloc_(alloc),
       address_length_(address_length),
@@ -250,15 +255,15 @@ TranslationTableBase<Config>::TranslationTableBase(
   root_table_ = CreateTable();
 }
 
-template<class Config>
-inline void* TranslationTableBase<Config>::GetBase() {
+template <class Config, template <class> class AllocatorBase>
+inline void* TranslationTableBase<Config, AllocatorBase>::GetBase() {
   return reinterpret_cast<void*>(root_table_);
 }
 
-template<class Config>
-void TranslationTableBase<Config>::Map(
+template <class Config, template <class> class AllocatorBase>
+void TranslationTableBase<Config, AllocatorBase>::Map(
          const void* v_ptr, const void* p_ptr,
-         const TranslationTableBase<Config>::BlockSize size,
+         const TranslationTableBase<Config, AllocatorBase>::BlockSize size,
          const types::MemoryAttr mem_attr,
          const types::S2AP s2ap, const types::SH sh,
          const types::AF af, const types::Contiguous contiguous,
@@ -272,7 +277,8 @@ void TranslationTableBase<Config>::Map(
     }
 
     size_t index = Config::CalcIndex(v_ptr, level);
-    Table* next_level_table = reinterpret_cast<Table*>(Table::Entry::ToAddress(table->data[index].data.address));
+    Table* next_level_table =
+        reinterpret_cast<Table*>(Table::Entry::ToAddress(table->data[index].data.address));
     if (nullptr == next_level_table) {
       DDBG_LOG("current level: ", level);
       DDBG_LOG("table index: ", index);
@@ -315,10 +321,10 @@ void TranslationTableBase<Config>::Map(
   }
 }
 
-template<class Config>
-typename TranslationTableBase<Config>::Table*
-TranslationTableBase<Config>::CreateTable() {
-  auto table = reinterpret_cast<Table*>(alloc_.Allocate(sizeof(Table), sizeof(Table)));
+template <class Config, template <class> class AllocatorBase>
+typename TranslationTableBase<Config, AllocatorBase>::Table*
+TranslationTableBase<Config, AllocatorBase>::CreateTable() {
+  Table* table = alloc_.AllocateAligned(sizeof(Table));
   DDBG_LOG("New table ptr: ", reinterpret_cast<uint64_t>(table));
 
   for (size_t i = 0; i < TableEntryCount(kernel::mm::PageSize::_4KB); i++) {

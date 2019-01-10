@@ -20,15 +20,14 @@ GNU General Public License for more details.
 #include <stdint.h>
 #include <cstddef>
 
-#include "kernel/mm/allocator.h"
-
 namespace kernel {
 namespace mm {
 
 /**
  * @brief The Memory Pool class
  */
-class BootAllocator : public Allocator {
+template <class T>
+class BootAllocator {
  public:
   /**
    * @brief Constructor
@@ -40,13 +39,11 @@ class BootAllocator : public Allocator {
   /**
    * @brief Destructor
    */
-  virtual ~BootAllocator();
+  ~BootAllocator();
 
-  /// INTERFACE_START(kernel::Allocator)
-  virtual void* Allocate(const size_t size);
-  virtual void* Allocate(const size_t size, const size_t aligned);
-  virtual void Deallocate(void* ptr);
-  /// INTERFACE_END(kernel::Allocator)
+  T* Allocate(const size_t count = 1);
+  T* AllocateAligned(const size_t aligned, const size_t count = 1);
+  void Deallocate(T* ptr);
 
   /**
    * @brief Get end pointer
@@ -58,6 +55,33 @@ class BootAllocator : public Allocator {
  private:
   uint8_t* head_;
 };
+
+template <class T>
+BootAllocator<T>::BootAllocator(uint8_t* start_ptr)
+    : head_(start_ptr) {
+}
+
+template <class T>
+BootAllocator<T>::~BootAllocator() {
+}
+
+template <class T>
+T* BootAllocator<T>::Allocate(const size_t count) {
+  T* ret_val = reinterpret_cast<T*>(head_);
+  head_ += (sizeof(T) * count);
+  return ret_val;
+}
+
+template <class T>
+T* BootAllocator<T>::AllocateAligned(const size_t aligned, const size_t count) {
+  while (0 != (reinterpret_cast<size_t>(head_) % aligned)) { head_++; }
+
+  return Allocate(count);
+}
+
+template <class T>
+void BootAllocator<T>::Deallocate(T* ptr) { //delete is not supported
+}
 
 }  // namespace mm
 }  // namespace kernel

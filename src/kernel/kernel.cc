@@ -37,7 +37,7 @@ void* memset(void* dst, int val, size_t size) {
 }
 
 void operator delete(void*, unsigned long) {}
-void operator delete(void*, unsigned long, std::align_val_t) {}
+//void operator delete(void*, unsigned long, std::align_val_t) {}
 
 // Default placement versions of operator new.
 inline void* operator new (size_t, void* __p) { return __p; }

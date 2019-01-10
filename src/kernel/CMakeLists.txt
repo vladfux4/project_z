@@ -11,7 +11,6 @@ set(SOURCE ${SOURCE}
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/pool.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/allocator.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/boot_allocator.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/mm/boot_allocator.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/memory.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/memory.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/page_registry.h
