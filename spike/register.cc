@@ -49,10 +49,13 @@ struct Register {
   using FieldIndexTuple = decltype (MakeFieldIndexTuple(std::index_sequence_for<Fields...>{}));
 
   template<std::size_t Index>
-  using FieldAlias = typename std::tuple_element_t<Index, FieldIndexTuple>;
+  using FieldAlias = std::tuple_element_t<Index, FieldIndexTuple>;
 
   template<typename T>
   using is_in_register = std::is_same<FieldAlias<T::index>, T>;
+
+  template<typename Arg, typename... Rest>
+  using is_double_in_pack = std::is_same<Arg, std::tuple_element_t<0, std::tuple<Rest...>>>;
 
   template<std::size_t Index>
   constexpr static std::size_t GetOffset() {
@@ -66,6 +69,7 @@ struct Register {
 
   template<typename Arg, typename... Rest>
   constexpr static RawType DoMakeValue(Arg arg, Rest... args) {
+    static_assert (!is_double_in_pack<Arg, Rest...>::value, "Input field parameter is not unique");
     auto value = DoMakeValue(arg);
     value |= DoMakeValue(args...);
     return value;
@@ -92,6 +96,7 @@ struct Register {
 
   template<typename Arg, typename... Rest>
   constexpr static RawType DoMakeMask(Arg arg, Rest... args) {
+    static_assert (!is_double_in_pack<Arg, Rest...>::value, "Input field parameter is not unique");
     auto mask = DoMakeMask(arg);
     mask |= DoMakeMask(args...);
     return mask;
@@ -133,6 +138,17 @@ struct Register_1 : Register<
 };
 
 //struct Register_2 : public Register<Field<uint8_t, 9>> {}; // ERROR
+
+enum class Enum_0 {
+  OFF = 0,
+  ON = 1,
+  Z = 2,
+};
+
+struct Register_3 : public Register<Field<Enum_0, 4>, Field<uint8_t>> {
+    using Field_1 = FieldAlias<0>;
+    using Field_2 = FieldAlias<1>;
+};
 
 int main() {
   Register_0 r0;
@@ -182,6 +198,15 @@ int main() {
 //    std::cout << "reg: " << std::hex << value << std::endl;
 //    std::cout << "f2: " << std::hex << static_cast<std::size_t>(r1.GetValue<Register_0::Field_1>(value)) << std::endl;
 //  }
+
+  Register_3 r3;
+  {
+    constexpr auto value = r3.MakeValue(Register_3::Field_1{Enum_0::ON}, Register_3::Field_2{0xF0});
+    std::cout << "reg: " << std::hex << value << std::endl;
+
+    constexpr auto set = r3.Set(value, Register_3::Field_1{Enum_0::Z});
+    std::cout << "set: " << std::hex << set << std::endl;
+  }
 
   return 0;
 }
