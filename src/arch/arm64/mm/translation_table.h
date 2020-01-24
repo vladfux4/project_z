@@ -17,65 +17,144 @@ GNU General Public License for more details.
 #ifndef ARCH_ARM64_MM_TRANSLATION_TABLE_H_
 #define ARCH_ARM64_MM_TRANSLATION_TABLE_H_
 
+#include <assert.h>
 #include <stdint.h>
 #include <cstddef>
-#include <assert.h>
+#include <type_traits>
+#include <utility>
 
 #include "arch/arm64/mm/translation_descriptor.h"
-#include "kernel/mm/allocator.h"
 #include "kernel/logger.h"
+#include "kernel/mm/allocator.h"
+
+// Default placement versions of operator new.
+inline void* operator new(size_t, void* __p) { return __p; }
+inline void* operator new[](size_t, void* __p) { return __p; }
 
 namespace arch {
 namespace arm64 {
 namespace mm {
 
-/**
- * @brief Get Table entry count by page size
- *
- * @param size Page size
- *
- * @return entry count
- */
-constexpr size_t TableEntryCount(const kernel::mm::PageSize size) {
-  switch (size) {
-    case kernel::mm::PageSize::_4KB: { return (1ULL << 9); }
-    case kernel::mm::PageSize::_16KB: { return (1ULL << 11); }
-    case kernel::mm::PageSize::_64KB: { return (1ULL << 13); }
+enum class LookupLevel : uint8_t {
+  _1 = 1,
+  _2 = 2,
+  _3 = 3,
+  _4 = 4,
+};
+
+using LookupLevelInt = std::underlying_type<LookupLevel>::type;
+
+template <typename T,
+          typename std::underlying_type<T>::type kEnd =
+              static_cast<typename std::underlying_type<T>::type>(-1)>
+class EnumIterator {
+ public:
+  using UnderlyingType = typename std::underlying_type<T>::type;
+
+  constexpr EnumIterator(T value) : value_(value) {}
+
+  const auto& Value() { return value_; }
+  static const auto& End() { return end_; }
+
+  const UnderlyingType& Int() {
+    return *reinterpret_cast<UnderlyingType*>(&value_);
   }
 
-  return 0;
-}
+  EnumIterator& operator++(int) {
+    value_ = static_cast<T>(Int() + 1);
+    return *this;
+  }
 
-/**
- * @brief Translation descriptor table struct
- */
-template<kernel::mm::PageSize kPageSize>
+  EnumIterator& operator--(int) {
+    value_ = static_cast<T>(Int() - 1);
+    return *this;
+  }
+
+  bool operator!=(const EnumIterator& obj) const {
+    return (obj.value_ != value_);
+  }
+
+ private:
+  static const EnumIterator end_;
+  T value_;
+};
+
+template <typename T, typename std::underlying_type<T>::type kEnd>
+const EnumIterator<T, kEnd> EnumIterator<T, kEnd>::end_ =
+    EnumIterator(static_cast<T>(kEnd));
+
+template <kernel::mm::PageSize size>
+struct TableEntryCount {};
+
+template <>
+struct TableEntryCount<kernel::mm::PageSize::_4KB> {
+  static constexpr size_t value = (1ULL << 9);
+};
+
+template <>
+struct TableEntryCount<kernel::mm::PageSize::_16KB> {
+  static constexpr size_t value = (1ULL << 11);
+};
+
+template <>
+struct TableEntryCount<kernel::mm::PageSize::_64KB> {
+  static constexpr size_t value = (1ULL << 13);
+};
+
+template <kernel::mm::PageSize kPageSize>
 struct DescriptorTable {
-  typedef TableDescriptor<kPageSize> Entry;
-  Entry data[TableEntryCount(kPageSize)];
-};
-static_assert(sizeof(DescriptorTable<kernel::mm::PageSize::_4KB>) == (512 * 8), "Wrong table size");
+  using TableItem = TableDescriptor<kPageSize>;
 
-/**
- * @brief Translation entry table struct
- */
-template<kernel::mm::PageSize kPageSize, TableLvl kLvl>
-struct EntryTable {
-  typedef EntryDescriptor<kPageSize, kLvl> Entry;
-  Entry data[TableEntryCount(kPageSize)];
-};
-static_assert(sizeof(EntryTable<kernel::mm::PageSize::_4KB, TableLvl::_1>) == (512 * 8), "Wrong table size");
+  template <TableLvl kLevel>
+  using EntryItem = EntryDescriptor<kPageSize, kLevel>;
 
-template<kernel::mm::PageSize kSize>
-class TranslationTableConfig {
+  struct Item {
+    union Value {
+      TableItem table;
+      EntryItem<TableLvl::_1> entry_1;
+      EntryItem<TableLvl::_2> entry_2;
+      EntryItem<TableLvl::_3> entry_3;
+
+      Value() { new (&table) TableItem(); }
+    };
+
+    auto& Table() { return value.table; }
+
+    Item& operator=(const TableItem& item) {
+      value.table = item;
+      return *this;
+    }
+
+    Item& operator=(const EntryItem<TableLvl::_1>& item) {
+      value.entry_1 = item;
+      return *this;
+    }
+
+    Item& operator=(const EntryItem<TableLvl::_2>& item) {
+      value.entry_2 = item;
+      return *this;
+    }
+
+    Item& operator=(const EntryItem<TableLvl::_3>& item) {
+      value.entry_3 = item;
+      return *this;
+    }
+
+    Value value;
+  };
+
+  Item data[TableEntryCount<kPageSize>::value];
 };
 
-template<>
-class TranslationTableConfig<kernel::mm::PageSize::_4KB> {
+static_assert(sizeof(DescriptorTable<kernel::mm::PageSize::_4KB>) == (512 * 8),
+              "Wrong table size");
+
+template <kernel::mm::PageSize kSize, std::size_t kAddressLength>
+class TranslationTableConfig {};
+
+template <std::size_t kAddressLength>
+class TranslationTableConfig<kernel::mm::PageSize::_4KB, kAddressLength> {
  public:
-  /**
-   * @brief The BlockSize enum
-   */
   enum class BlockSize {
     _4KB,
     _2MB,
@@ -83,256 +162,167 @@ class TranslationTableConfig<kernel::mm::PageSize::_4KB> {
     _512GB,
   };
 
-  typedef DescriptorTable<kernel::mm::PageSize::_4KB> Table;
-  static const BlockSize kMinBlockSize = BlockSize::_4KB;
-  static const kernel::mm::PageSize kPageSize = kernel::mm::PageSize::_4KB;
+  static constexpr BlockSize kMinBlockSize = BlockSize::_4KB;
+  static constexpr kernel::mm::PageSize kPageSize = kernel::mm::PageSize::_4KB;
+  using Table = DescriptorTable<kPageSize>;
 
-  /**
-   * @brief Calculate table index by pointer
-   *
-   * @param ptr Pointer
-   * @param level Table level
-   *
-   * @return index
-   */
-  static inline size_t CalcIndex(const void* ptr, const uint8_t level) {
-    return ((reinterpret_cast<size_t>(ptr) >> (12 + (9 * (level - 1)))) & (512 - 1));
+  template <std::size_t kLength, typename Spec = void>
+  struct MakeTableLevel {};
+
+  template <std::size_t kLength>
+  struct MakeTableLevel<kLength,
+                        std::enable_if_t<(kLength > 12 && kLength <= 21)>> {
+    static constexpr auto value = LookupLevel::_1;
+  };
+
+  template <std::size_t kLength>
+  struct MakeTableLevel<kLength,
+                        std::enable_if_t<(kLength > 20 && kLength <= 30)>> {
+    static constexpr auto value = LookupLevel::_2;
+  };
+
+  template <std::size_t kLength>
+  struct MakeTableLevel<kLength,
+                        std::enable_if_t<(kLength > 30 && kLength <= 39)>> {
+    static constexpr auto value = LookupLevel::_3;
+  };
+
+  template <std::size_t kLength>
+  struct MakeTableLevel<kLength,
+                        std::enable_if_t<(kLength > 39 && kLength <= 64)>> {
+    static constexpr auto value = LookupLevel::_4;
+  };
+
+  static constexpr auto kTableLevel = MakeTableLevel<kAddressLength>::value;
+
+  static inline size_t CalcIndex(const void* ptr, const LookupLevel level) {
+    return ((reinterpret_cast<size_t>(ptr) >>
+             (12 + (9 * (static_cast<LookupLevelInt>(level) - 1)))) &
+            (512 - 1));
   }
 
-  /**
-   * @brief Calculate entry address for table
-   *
-   * @param ptr Pointer
-   * @param level Table level
-   *
-   * @return pointer
-   */
-  static inline uint64_t CalcEntryAddress(const void* ptr, const uint8_t level) {
-    return reinterpret_cast<uint64_t>(ptr) >> (12 + (9 * (level - 1)));
+  static inline uint64_t CalcEntryAddress(const void* ptr,
+                                          const LookupLevel level) {
+    return reinterpret_cast<uint64_t>(ptr) >>
+           (12 + (9 * (static_cast<LookupLevelInt>(level) - 1)));
   }
 
-  /**
-   * @brief Calculate BlockSize from level
-   *
-   * @param level Table level
-   *
-   * @return block size
-   */
-  static inline BlockSize CalcBlockSizeFromTableLevel(const uint8_t level) {
+  static inline BlockSize CalcBlockSizeFromTableLevel(const LookupLevel level) {
     switch (level) {
-      case 4: {
+      case LookupLevel::_4:
         return BlockSize::_512GB;
-      }
-      case 3: {
+      case LookupLevel::_3:
         return BlockSize::_1GB;
-      }
-      case 2: {
+      case LookupLevel::_2:
         return BlockSize::_2MB;
-      }
-      case 1: {
+      case LookupLevel::_1:
         return BlockSize::_4KB;
-      }
-      default: {
-        //assert();
-      }
     }
-
-    return BlockSize::_4KB;
-  }
-
-  /**
-   * @brief Calculate table level by address length
-   *
-   * @param address_length Length
-   *
-   * @return table max level
-   */
-  static inline uint8_t CalcTableLevel(const uint8_t address_length) {
-    uint8_t level = 0;
-
-    if (address_length > 12) {
-      level = 1;
-    }
-
-    if (address_length > 21) {
-      level = 2;
-    }
-
-    if (address_length > 30) {
-      level = 3;
-    }
-
-    if (address_length > 39) {
-      level = 4;
-    }
-
-    if (0 == level) {
-      //assert();
-    }
-
-    return level;
+    assert(false);
   }
 };
 
-template <class Config, template <class> class AllocatorBase>
-class TranslationTableBase {
+template <kernel::mm::PageSize kPageSize, std::size_t kAddressLength,
+          template <class> class AllocatorBase>
+class TranslationTable {
  public:
-  typedef typename Config::BlockSize BlockSize;
-  typedef typename Config::Table Table;
-  typedef AllocatorBase<Table> Allocator;
+  using Config = TranslationTableConfig<kPageSize, kAddressLength>;
+  using BlockSize = typename Config::BlockSize;
+  using Table = typename Config::Table;
+  using Allocator = AllocatorBase<Table>;
 
-  /**
-   * @brief Constructor
-   *
-   * @param alloc Reference on allocator
-   * @param address_length Address length
-   */
-  TranslationTableBase(Allocator& alloc,
-                       const uint8_t address_length);
+  struct EntryParameters {
+    types::MemoryAttr mem_attr;
+    types::S2AP s2ap;
+    types::SH sh;
+    types::AF af;
+    types::Contiguous contiguous;
+    types::XN xn;
+  };
 
-  /**
-   * @brief Get table base pointer
-   *
-   * @return pointer
-   */
-  inline void* GetBase();
+  TranslationTable(Allocator& alloc) : alloc_(alloc), root_table_(nullptr) {
+    DDBG_LOG("Constructor");
+    root_table_ = MakeTable();
+  }
 
-  /**
-   * @brief Map virtual address on physical
-   *
-   * @param v_ptr Virtual address
-   * @param p_ptr Physical address
-   * @param size Block size
-   *
-   * @param mem_attr
-   * @param s2ap
-   * @param sh
-   * @param af
-   * @param contiguous
-   * @param xn
-   */
-  void Map(const void* v_ptr, const void* p_ptr,
-           const BlockSize size,
-           const types::MemoryAttr mem_attr,
-           const types::S2AP s2ap, const types::SH sh,
-           const types::AF af, const types::Contiguous contiguous,
-           const types::XN xn);
+  void* GetBase() { return reinterpret_cast<void*>(root_table_); }
 
-  /**
-   * @brief CreateTable
-   *
-   * @return Pointer on new table
-   */
-  Table* CreateTable();
+  void Map(const void* v_ptr, const void* p_ptr, const BlockSize size,
+           const EntryParameters& param) {
+    auto chain_info = CreateTableChain(v_ptr, size);
+    CreateEntry(v_ptr, p_ptr, size, param, std::get<LookupLevel>(chain_info),
+                std::get<Table*>(chain_info));
+  }
+
+  std::pair<Table*, LookupLevel> CreateTableChain(const void* v_ptr,
+                                                  const BlockSize size) {
+    using LevelIterator = EnumIterator<LookupLevel, 0>;
+    auto it = LevelIterator(Config::kTableLevel);
+    Table* table = root_table_;
+    for (; (LevelIterator::End() != it) &&
+           (Config::CalcBlockSizeFromTableLevel(it.Value()) != size);
+         it--) {
+      size_t index = Config::CalcIndex(v_ptr, it.Value());
+      Table* next_level_table = reinterpret_cast<Table*>(
+          Table::TableItem::ToAddress(table->data[index].Table().data.address));
+      if (nullptr == next_level_table) {
+        DDBG_LOG("current level: ", it.Int());
+        DDBG_LOG("table index: ", index);
+
+        next_level_table = MakeTable();
+        table->data[index] = typename Table::TableItem(
+            types::Entry::ENTRY_TABLE,
+            Table::TableItem::ToTableAddress(next_level_table),
+            types::PXN_EXECUTE, types::XN_EXECUTE, types::AP_NOEFFECT,
+            types::NSTABLE_NON_SECURE);
+      }
+
+      table = next_level_table;
+    }
+
+    return {table, it.Value()};
+  }
+
+  void CreateEntry(const void* v_ptr, const void* p_ptr, const BlockSize size,
+                   const EntryParameters& param, const LookupLevel level,
+                   Table* table) {
+    uint64_t address = Config::CalcEntryAddress(p_ptr, level);
+    auto entry_type = (Config::kMinBlockSize == size) ? types::ENTRY_TABLE
+                                                      : types::ENTRY_BLOCK;
+    const auto index = Config::CalcIndex(v_ptr, level);
+    auto& entry = table->data[index];
+
+    DDBG_LOG("New etry. table level: ", static_cast<LookupLevelInt>(level));
+    DDBG_LOG("entry index: ", index);
+    DDBG_LOG("address: ", address);
+
+    if (LookupLevel::_3 == level) {
+      entry = MakeEntry<TableLvl::_1>(entry_type, address, param);
+    } else if (LookupLevel::_2 == level) {
+      entry = MakeEntry<TableLvl::_2>(entry_type, address, param);
+    } else if (LookupLevel::_1 == level) {
+      entry = MakeEntry<TableLvl::_3>(entry_type, address, param);
+    }
+  }
+
+  template <TableLvl kLvl>
+  auto MakeEntry(const types::Entry entry_type, const uint64_t address,
+                 const EntryParameters& param) {
+    return typename Table::template EntryItem<kLvl>(
+        entry_type, address, param.mem_attr, param.s2ap, param.sh, param.af,
+        param.contiguous, param.xn);
+  }
+
+  Table* MakeTable() {
+    Table* table = new (alloc_.AllocateAligned(sizeof(Table))) Table();
+    DDBG_LOG("New table ptr: ", reinterpret_cast<uint64_t>(table));
+    return table;
+  }
 
  private:
   Allocator& alloc_;
-  uint8_t address_length_;
   Table* root_table_;
 };
-
-template<kernel::mm::PageSize kSize, template <class> class AllocatorBase>
-class TranslationTable
-          : public TranslationTableBase<TranslationTableConfig<kSize>, AllocatorBase> {
- public:
-  typedef typename TranslationTableBase<TranslationTableConfig<kSize>,
-                                        AllocatorBase>::Allocator Allocator;
-
-  TranslationTable(Allocator& alloc, const uint8_t address_length)
-      : TranslationTableBase<TranslationTableConfig<kSize>,
-                             AllocatorBase>(alloc, address_length) {}
-};
-
-template <class Config, template <class> class AllocatorBase>
-TranslationTableBase<Config, AllocatorBase>::TranslationTableBase(
-    Allocator& alloc,
-    const uint8_t address_length)
-    : alloc_(alloc),
-      address_length_(address_length),
-      root_table_(nullptr) {
-  DDBG_LOG("Constructor");
-
-  root_table_ = CreateTable();
-}
-
-template <class Config, template <class> class AllocatorBase>
-inline void* TranslationTableBase<Config, AllocatorBase>::GetBase() {
-  return reinterpret_cast<void*>(root_table_);
-}
-
-template <class Config, template <class> class AllocatorBase>
-void TranslationTableBase<Config, AllocatorBase>::Map(
-         const void* v_ptr, const void* p_ptr,
-         const TranslationTableBase<Config, AllocatorBase>::BlockSize size,
-         const types::MemoryAttr mem_attr,
-         const types::S2AP s2ap, const types::SH sh,
-         const types::AF af, const types::Contiguous contiguous,
-         const types::XN xn) {
-  auto level = Config::CalcTableLevel(address_length_);
-
-  Table* table = root_table_;
-  while (0 != level) { //find table
-    if (size == Config::CalcBlockSizeFromTableLevel(level)) {
-      break;
-    }
-
-    size_t index = Config::CalcIndex(v_ptr, level);
-    Table* next_level_table =
-        reinterpret_cast<Table*>(Table::Entry::ToAddress(table->data[index].data.address));
-    if (nullptr == next_level_table) {
-      DDBG_LOG("current level: ", level);
-      DDBG_LOG("table index: ", index);
-
-      next_level_table = CreateTable();
-      table->data[index] = typename Table::Entry(
-        types::Entry::ENTRY_TABLE,
-        Table::Entry::ToTableAddress(next_level_table),
-        types::PXN_EXECUTE, types::XN_EXECUTE, types::AP_NOEFFECT,
-        types::NSTABLE_NON_SECURE);
-    }
-
-    level--;
-    table = next_level_table;
-  }
-
-  // create entry
-  const auto index = Config::CalcIndex(v_ptr, level);
-  auto& entry = table->data[index];
-  uint64_t address = Config::CalcEntryAddress(p_ptr, level);
-  auto entry_type = (Config::kMinBlockSize == size) ?
-                     types::ENTRY_TABLE : types::ENTRY_BLOCK;
-
-  DDBG_LOG("New etry. table level: ", level);
-  DDBG_LOG("entry index: ", index);
-  DDBG_LOG("address: ", address);
-
-  if (3 == level) {
-    typedef EntryDescriptor<Config::kPageSize, TableLvl::_1> Entry;
-    *reinterpret_cast<Entry*>(&entry) =
-        Entry(entry_type, address, mem_attr, s2ap, sh, af, contiguous, xn);
-  } else if (2 == level) {
-    typedef EntryDescriptor<Config::kPageSize, TableLvl::_2> Entry;
-    *reinterpret_cast<Entry*>(&entry) =
-        Entry(entry_type, address, mem_attr, s2ap, sh, af, contiguous, xn);
-  } else if (1 == level) {
-    typedef EntryDescriptor<Config::kPageSize, TableLvl::_3> Entry;
-    *reinterpret_cast<Entry*>(&entry) =
-        Entry(entry_type, address, mem_attr, s2ap, sh, af, contiguous, xn);
-  }
-}
-
-template <class Config, template <class> class AllocatorBase>
-typename TranslationTableBase<Config, AllocatorBase>::Table*
-TranslationTableBase<Config, AllocatorBase>::CreateTable() {
-  Table* table = alloc_.AllocateAligned(sizeof(Table));
-  DDBG_LOG("New table ptr: ", reinterpret_cast<uint64_t>(table));
-
-  for (size_t i = 0; i < TableEntryCount(kernel::mm::PageSize::_4KB); i++) {
-    table->data[i] = typename Table::Entry();
-  }
-
-  return table;
-}
 
 }  // namespace mm
 }  // namespace arm64

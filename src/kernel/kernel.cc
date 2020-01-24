@@ -24,7 +24,8 @@ GNU General Public License for more details.
 extern "C" {
 void __cxa_pure_virtual(void) {
   // We might want to write some diagnostics to uart in this case
-  while (true) {}
+  while (true) {
+  }
 }
 
 void* memset(void* dst, int val, size_t size) {
@@ -34,27 +35,31 @@ void* memset(void* dst, int val, size_t size) {
 
   return dst;
 }
+
+__attribute__((__noreturn__)) void __assert_func(const char*, int, const char*,
+                                                 const char*) {
+  while (true) {
+  }
+}
 }
 
 void operator delete(void*, unsigned long) {}
-//void operator delete(void*, unsigned long, std::align_val_t) {}
+// void operator delete(void*, unsigned long, std::align_val_t) {}
 
 // Default placement versions of operator new.
-inline void* operator new (size_t, void* __p) { return __p; }
-inline void* operator new[] (size_t, void* __p) { return __p; }
+// inline void* operator new(size_t, void* __p) { return __p; }
+// inline void* operator new[](size_t, void* __p) { return __p; }
 
 // Default placement versions of operator delete.
-inline void operator delete (void*, void*) {}
-inline void operator delete[] (void*, void*) {}
+inline void operator delete(void*, void*) {}
+inline void operator delete[](void*, void*) {}
 /// dummy operators end
 
 namespace kernel {
 
-static uint8_t __attribute__((aligned(4096)))
-kernel_storage[sizeof(Kernel)];
+static uint8_t __attribute__((aligned(4096))) kernel_storage[sizeof(Kernel)];
 
-Kernel::Kernel() : memory_() {
-}
+Kernel::Kernel() : memory_() {}
 
 void Kernel::Routine() {
   Init();
@@ -62,18 +67,18 @@ void Kernel::Routine() {
 
   // address translation test code
   uint64_t* ptr = reinterpret_cast<uint64_t*>(0x40);
-  uint64_t* v_ptr = reinterpret_cast<uint64_t*>(0xFFFFFFFFFFE00050); // mapped on 0x50
+  uint64_t* v_ptr =
+      reinterpret_cast<uint64_t*>(0xFFFFFFFFFFE00050);  // mapped on 0x50
   while (true) {
     static uint64_t a = 0;
     a++;
     *ptr = a;
     *v_ptr = a;
-    Print("Test");
+    //    Print("Test");
   }
 }
 
-Kernel::~Kernel() {
-}
+Kernel::~Kernel() {}
 
 void Kernel::Init() {
   InitPrint();
