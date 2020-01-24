@@ -38,43 +38,39 @@ void Memory::Init() {
   for (; base < 440; base++) {  // 4440
     void* address = reinterpret_cast<void*>(base << 21);
     p_table_.Map(address, address, TranslationTable::BlockSize::_2MB,
-                 {types::MEMORYATTR_NORMAL, types::S2AP_NORMAL,
-                  types::SH_INNER_SHAREABLE, types::AF_IGNORE,
-                  types::CONTIGUOUS_OFF, types::XN_EXECUTE});
+                 {MemoryAttr::NORMAL, S2AP::NORMAL, SH::INNER_SHAREABLE,
+                  AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
   }
 
   // VC ram up to 0x3F000000
   for (; base < 512 - 8; base++) {
     void* address = reinterpret_cast<void*>(base << 21);
     p_table_.Map(address, address, TranslationTable::BlockSize::_2MB,
-                 {types::MEMORYATTR_NORMAL_NC, types::S2AP_NORMAL,
-                  types::SH_NON_SHAREABLE, types::AF_IGNORE,
-                  types::CONTIGUOUS_OFF, types::XN_EXECUTE});
+                 {MemoryAttr::NORMAL_NC, S2AP::NORMAL, SH::NON_SHAREABLE,
+                  AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
   }
 
   // 16 MB peripherals at 0x3F000000 - 0x40000000
   for (; base < 512; base++) {
     void* address = reinterpret_cast<void*>(base << 21);
     p_table_.Map(address, address, TranslationTable::BlockSize::_2MB,
-                 {types::MEMORYATTR_DEVICE_NGNRNE, types::S2AP_NORMAL,
-                  types::SH_NON_SHAREABLE, types::AF_IGNORE,
-                  types::CONTIGUOUS_OFF, types::XN_EXECUTE});
+                 {MemoryAttr::DEVICE_NGNRNE, S2AP::NORMAL, SH::NON_SHAREABLE,
+                  AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
   }
 
   // 2 MB for mailboxes at 0x40000000
   void* address = reinterpret_cast<void*>(base << 21);
   p_table_.Map(address, address, TranslationTable::BlockSize::_2MB,
-               {types::MEMORYATTR_DEVICE_NGNRNE, types::S2AP_NORMAL,
-                types::SH_NON_SHAREABLE, types::AF_IGNORE,
-                types::CONTIGUOUS_OFF, types::XN_EXECUTE});
+               {MemoryAttr::DEVICE_NGNRNE, S2AP::NORMAL, SH::NON_SHAREABLE,
+                AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
 
   mmu_.SetUserTable(p_table_.GetBase());
 
-  v_table_.Map(
-      reinterpret_cast<void*>(0xFFFFFFFFFFE00000),
-      reinterpret_cast<void*>(0x0000), TranslationTable::BlockSize::_4KB,
-      {types::MEMORYATTR_NORMAL, types::S2AP_NORMAL, types::SH_INNER_SHAREABLE,
-       types::AF_IGNORE, types::CONTIGUOUS_OFF, types::XN_EXECUTE});
+  v_table_.Map(reinterpret_cast<void*>(0xFFFFFFFFFFE00000),
+               reinterpret_cast<void*>(0x0000),
+               TranslationTable::BlockSize::_4KB,
+               {MemoryAttr::NORMAL, S2AP::NORMAL, SH::INNER_SHAREABLE,
+                AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
 
   mmu_.SetKernelTable(v_table_.GetBase());
 

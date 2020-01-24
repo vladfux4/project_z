@@ -43,18 +43,6 @@ __attribute__((__noreturn__)) void __assert_func(const char*, int, const char*,
 }
 }
 
-void operator delete(void*, unsigned long) {}
-// void operator delete(void*, unsigned long, std::align_val_t) {}
-
-// Default placement versions of operator new.
-// inline void* operator new(size_t, void* __p) { return __p; }
-// inline void* operator new[](size_t, void* __p) { return __p; }
-
-// Default placement versions of operator delete.
-inline void operator delete(void*, void*) {}
-inline void operator delete[](void*, void*) {}
-/// dummy operators end
-
 namespace kernel {
 
 static uint8_t __attribute__((aligned(4096))) kernel_storage[sizeof(Kernel)];

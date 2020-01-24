@@ -17,10 +17,10 @@ GNU General Public License for more details.
 #ifndef ARCH_ARM64_MM_TRANSLATION_DESCRIPTOR_H_
 #define ARCH_ARM64_MM_TRANSLATION_DESCRIPTOR_H_
 
-#include <assert.h>
-#include <stdint.h>
+#include <cstdint>
 
 #include "kernel/types.h"
+#include "kernel/utils/register.h"
 
 namespace arch {
 namespace arm64 {
@@ -31,15 +31,13 @@ namespace mm {
  */
 enum class TableLvl { _1, _2, _3 };
 
-namespace types {
-
 /**
  * @brief The Descriptor entry type
  */
-enum Entry {
-  ENTRY_INVALID = 0b00U,
-  ENTRY_BLOCK = 0b01U,
-  ENTRY_TABLE = 0b11U,
+enum class EntryType {
+  INVALID = 0b00U,
+  BLOCK = 0b01U,
+  TABLE = 0b11U,
 };
 
 /**
@@ -48,27 +46,27 @@ enum Entry {
  * The access read/write permission bits control
  * access to the corresponding memory region
  */
-enum AP {
-  AP_NOEFFECT = 0b00U,
-  AP_NO_EL0 = 0b01U,
-  AP_NO_WRITE = 0b10U,
-  AP_NO_WRITE_EL0_READ = 0b11U,
+enum class AP {
+  NOEFFECT = 0b00U,
+  NO_EL0 = 0b01U,
+  NO_WRITE = 0b10U,
+  NO_WRITE_EL0_READ = 0b11U,
 };
 
 /**
  * @brief The execute never bit enum
  */
-enum XN {
-  XN_EXECUTE = 0,
-  XN_NO_EXECUTE = 1,
+enum class XN {
+  EXECUTE = 0,
+  NO_EXECUTE = 1,
 };
 
 /**
  * @brief The privileged execute never bit enum
  */
-enum PXN {
-  PXN_EXECUTE = 0,
-  PXN_NO_EXECUTE = 1,
+enum class PXN {
+  EXECUTE = 0,
+  NO_EXECUTE = 1,
 };
 
 /**
@@ -77,9 +75,9 @@ enum PXN {
  * NSTable bit indicates whether the table identified in the descriptor
  * is in Secure or Non-secure memory
  */
-enum NSTable {
-  NSTABLE_SECURE = 0,
-  NSTABLE_NON_SECURE = 1,
+enum class NSTable {
+  SECURE = 0,
+  NON_SECURE = 1,
 };
 
 /**
@@ -88,24 +86,24 @@ enum NSTable {
  * NS bit indicates whether the descriptor refers to the Secure or
  * the Non-secure address map
  */
-enum NS {
-  NS_SECURE = 0,
-  NS_NON_SECURE = 1,
+enum class NS {
+  SECURE = 0,
+  NON_SECURE = 1,
 };
 
 /**
  * @brief The S2AP data access permissions enum
  */
-enum S2AP {
-  S2AP_NORMAL = 0,
-  S2AP_NOREAD_EL0 = 1,
-  S2AP_NO_WRITE = 2,
+enum class S2AP {
+  NORMAL = 0,
+  NOREAD_EL0 = 1,
+  NO_WRITE = 2,
 };
 
-enum SH {
-  SH_NON_SHAREABLE = 0,
-  SH_OUTER_SHAREABLE = 2,
-  SH_INNER_SHAREABLE = 3,
+enum class SH {
+  NON_SHAREABLE = 0,
+  OUTER_SHAREABLE = 2,
+  INNER_SHAREABLE = 3,
 };
 
 /**
@@ -115,9 +113,9 @@ enum SH {
  * for the first time since the Access flag in the corresponding
  * translation table descriptor was set to 0
  */
-enum AF {
-  AF_HANDLE = 0,
-  AF_IGNORE = 1,
+enum class AF {
+  HANDLE = 0,
+  IGNORE = 1,
 };
 
 /**
@@ -126,79 +124,74 @@ enum AF {
  * A hint bit indicating that the translation table entry is one of
  * a contiguous set or entries, that might be cached in a single TLB entry
  */
-enum Contiguous {
-  CONTIGUOUS_OFF = 0,
-  CONTIGUOUS_ON = 1,
+enum class Contiguous {
+  OFF = 0,
+  ON = 1,
 };
 
-enum MemoryAttr {
-  MEMORYATTR_DEVICE_NGNRNE = 0,
-  MEMORYATTR_DEVICE_NGNRE = 1,
-  MEMORYATTR_DEVICE_GRE = 2,
-  MEMORYATTR_NORMAL_NC = 3,
-  MEMORYATTR_NORMAL = 4,
+enum class MemoryAttr {
+  DEVICE_NGNRNE = 0,
+  DEVICE_NGNRE = 1,
+  DEVICE_GRE = 2,
+  NORMAL_NC = 3,
+  NORMAL = 4,
 };
 
-}  // namespace types
-
-/**
- * @brief The Translation table descriptor template
- */
 template <kernel::mm::PageSize kPageSize>
-struct __attribute__((__packed__)) TableDescriptor {
- public:
-  TableDescriptor() { *(reinterpret_cast<uint64_t*>(&data)) = 0; }
+struct TableAddressStartBit {};
 
-  TableDescriptor(const types::Entry entry, const uint64_t address,
-                  const types::PXN pxn, const types::XN xn, const types::AP ap,
-                  const types::NSTable ns) {
-    *(reinterpret_cast<uint64_t*>(&data)) = 0;
+template <>
+struct TableAddressStartBit<kernel::mm::PageSize::_4KB> {
+  static constexpr uint8_t value = 12;
+};
 
-    data.entry = entry;
-    data.address = address;
-    data.pxn = pxn;
-    data.xn = xn;
-    data.ap = ap;
-    data.ns = ns;
-  }
+template <>
+struct TableAddressStartBit<kernel::mm::PageSize::_16KB> {
+  static constexpr uint8_t value = 14;
+};
 
-  static constexpr uint8_t AddressStartBit() {
-    switch (kPageSize) {
-      case kernel::mm::PageSize::_4KB: {
-        return 12;
-      }
-      case kernel::mm::PageSize::_16KB: {
-        return 14;
-      }
-      case kernel::mm::PageSize::_64KB: {
-        return 16;
-      }
-    }
+template <>
+struct TableAddressStartBit<kernel::mm::PageSize::_64KB> {
+  static constexpr uint8_t value = 16;
+};
 
-    return 0xff;
-  }
+template <kernel::mm::PageSize kPageSize>
+struct __attribute__((__packed__)) TableDescriptor
+    : public utils::rtr::Register<
+          TableDescriptor<kPageSize>, std::size_t,
+          utils::rtr::Field<EntryType, 2>,  // @0-1 entry type
+          utils::rtr::Field<uint64_t, (TableAddressStartBit<kPageSize>::value -
+                                       2)>,  // @2-11 Set to 0
+          utils::rtr::Field<uint64_t, (48 - TableAddressStartBit<kPageSize>::
+                                                value)>,  // @12-47 36 Bits of
+                                                          // address
+          utils::rtr::Field<uint64_t, 11>,                // @48-58 Set to 0
+          utils::rtr::Field<PXN, 1>,     // @59 Never allow execution from a
+                                         // lower EL level
+          utils::rtr::Field<XN, 1>,      // @60 Never allow translation from
+                                         // a lower EL level
+          utils::rtr::Field<AP, 2>,      // @61-62 AP Table control .. see
+                                         // enumerate options
+          utils::rtr::Field<NSTable, 1>  // @63 Secure state, for
+                                         // accesses from Non-secure
+          > {
+  using EntryType = typename TableDescriptor<kPageSize>::template FieldAlias<0>;
+  using Address = typename TableDescriptor<kPageSize>::template FieldAlias<2>;
+  using PXN = typename TableDescriptor<kPageSize>::template FieldAlias<4>;
+  using XN = typename TableDescriptor<kPageSize>::template FieldAlias<5>;
+  using AP = typename TableDescriptor<kPageSize>::template FieldAlias<6>;
+  using NsTable = typename TableDescriptor<kPageSize>::template FieldAlias<7>;
 
   static inline uint64_t ToTableAddress(const void* address) {
-    return (reinterpret_cast<uint64_t>(address) >> AddressStartBit());
+    return (reinterpret_cast<uint64_t>(address) >>
+            TableAddressStartBit<kPageSize>::value);
   }
 
-  static inline void* ToAddress(const uint64_t address) {
-    return reinterpret_cast<void*>(address << AddressStartBit());
+  inline void* GetAddress() {
+    const uint64_t address = this->template Get<Address>();
+    return reinterpret_cast<void*>(address
+                                   << TableAddressStartBit<kPageSize>::value);
   }
-
-  struct Layout {
-    types::Entry entry : 2;                         // @0-1 entry type
-    uint64_t _reserved2 : (AddressStartBit() - 2);  // @2-11 Set to 0
-    uint64_t address : (48 - AddressStartBit());    // @12-47 36 Bits of address
-    uint64_t _reserved48_58 : 11;                   // @48-58 Set to 0
-    types::PXN pxn : 1;     // @59 Never allow execution from a lower EL level
-    types::XN xn : 1;       // @60 Never allow translation from a lower EL level
-    types::AP ap : 2;       // @61-62 AP Table control .. see enumerate options
-    types::NSTable ns : 1;  // @63 Secure state, for accesses from Non-secure
-                            // state this bit is RES0 and is ignored
-  };
-
-  Layout data;
 };
 
 static_assert(sizeof(TableDescriptor<kernel::mm::PageSize::_4KB>) == 8,
@@ -208,83 +201,86 @@ static_assert(sizeof(TableDescriptor<kernel::mm::PageSize::_16KB>) == 8,
 static_assert(sizeof(TableDescriptor<kernel::mm::PageSize::_64KB>) == 8,
               "TableDescriptor should be 0x08 bytes in size");
 
-/**
- * @brief The Translation table entry descriptor template
- */
 template <kernel::mm::PageSize kPageSize, TableLvl kLvl>
-struct __attribute__((__packed__)) EntryDescriptor {
+struct EntryAddressStartBit {};
+
+template <>
+struct EntryAddressStartBit<kernel::mm::PageSize::_4KB, TableLvl::_3> {
+  static constexpr uint8_t value = 12;
+};
+
+template <>
+struct EntryAddressStartBit<kernel::mm::PageSize::_16KB, TableLvl::_3> {
+  static constexpr uint8_t value = 14;
+};
+
+template <>
+struct EntryAddressStartBit<kernel::mm::PageSize::_64KB, TableLvl::_3> {
+  static constexpr uint8_t value = 16;
+};
+
+template <>
+struct EntryAddressStartBit<kernel::mm::PageSize::_4KB, TableLvl::_2> {
+  static constexpr uint8_t value = 21;
+};
+
+template <TableLvl kLvl>
+struct EntryAddressStartBit<kernel::mm::PageSize::_16KB, kLvl> {
+  static constexpr uint8_t value = 25;
+};
+
+template <TableLvl kLvl>
+struct EntryAddressStartBit<kernel::mm::PageSize::_64KB, kLvl> {
+  static constexpr uint8_t value = 29;
+};
+
+template <>
+struct EntryAddressStartBit<kernel::mm::PageSize::_4KB, TableLvl::_1> {
+  static constexpr uint8_t value = 30;
+};
+
+template <kernel::mm::PageSize kPageSize, TableLvl kLvl>
+struct __attribute__((__packed__)) EntryDescriptor
+    : public utils::rtr::Register<
+          EntryDescriptor<kPageSize, kLvl>, std::size_t,
+          utils::rtr::Field<EntryType, 2>,   // @0-1 Always 1 for a block
+                                             // table
+          utils::rtr::Field<MemoryAttr, 4>,  // @2-5
+          utils::rtr::Field<S2AP, 2>,        // @6-7
+          utils::rtr::Field<SH, 2>,          // @8-9
+          utils::rtr::Field<AF, 1>,          // @10 Accessable flag
+          utils::rtr::Field<uint64_t,
+                            (EntryAddressStartBit<kPageSize, kLvl>::value -
+                             11)>,  // @11-(X-1) Set to 0
+          utils::rtr::Field<uint64_t,
+                            (48 - EntryAddressStartBit<kPageSize, kLvl>::
+                                      value)>,  // @X-47 N Bits of address
+          utils::rtr::Field<uint8_t, 4>,        // @48-51 Set to 0
+          utils::rtr::Field<Contiguous, 1>,     // @52 Contiguous
+          utils::rtr::Field<bool, 1>,           // @53 Set to 0
+          utils::rtr::Field<XN, 1>,             // @54 No execute if bit set
+          utils::rtr::Field<uint16_t, 9>        // @55-63 Set to 0
+          > {
+  using EntryType =
+      typename EntryDescriptor<kPageSize, kLvl>::template FieldAlias<0>;
+  using MemoryAttr =
+      typename EntryDescriptor<kPageSize, kLvl>::template FieldAlias<1>;
+  using S2AP =
+      typename EntryDescriptor<kPageSize, kLvl>::template FieldAlias<2>;
+  using SH = typename EntryDescriptor<kPageSize, kLvl>::template FieldAlias<3>;
+  using AF = typename EntryDescriptor<kPageSize, kLvl>::template FieldAlias<4>;
+  using Address =
+      typename EntryDescriptor<kPageSize, kLvl>::template FieldAlias<6>;
+  using Contiguous =
+      typename EntryDescriptor<kPageSize, kLvl>::template FieldAlias<8>;
+  using XN = typename EntryDescriptor<kPageSize, kLvl>::template FieldAlias<10>;
+
   static_assert(!((kernel::mm::PageSize::_16KB == kPageSize) &&
                   (TableLvl::_1 == kLvl)),
-                "Not allowed combination");
+                "Wrong combination");
   static_assert(!((kernel::mm::PageSize::_64KB == kPageSize) &&
                   (TableLvl::_1 == kLvl)),
-                "Not allowed combination");
-
- public:
-  EntryDescriptor() { *(reinterpret_cast<uint64_t*>(&data)) = 0; }
-
-  EntryDescriptor(const types::Entry entry, const uint64_t address,
-                  const types::MemoryAttr mem_attr, const types::S2AP s2ap,
-                  const types::SH sh, const types::AF af,
-                  const types::Contiguous contiguous, const types::XN xn) {
-    *(reinterpret_cast<uint64_t*>(&data)) = 0;
-
-    data.entry = entry;
-    data.mem_attr = mem_attr;
-    data.s2ap = s2ap;
-    data.sh = sh;
-    data.af = af;
-    data.address = address;
-    data.contiguous = contiguous;
-    data.xn = xn;
-  }
-
-  static constexpr uint8_t AddressStartBit() {
-    if (TableLvl::_3 == kLvl) {
-      switch (kPageSize) {
-        case kernel::mm::PageSize::_4KB: {
-          return 12;
-        }
-        case kernel::mm::PageSize::_16KB: {
-          return 14;
-        }
-        case kernel::mm::PageSize::_64KB: {
-          return 16;
-        }
-      }
-    }
-
-    switch (kPageSize) {
-      case kernel::mm::PageSize::_4KB: {
-        return (TableLvl::_2 == kLvl) ? 21 : 30;
-      }
-      case kernel::mm::PageSize::_16KB: {
-        return 25;
-      }
-      case kernel::mm::PageSize::_64KB: {
-        return 29;
-      }
-    }
-
-    return 0xff;
-  }
-
-  struct Layout {
-    types::Entry entry : 2;          // @0-1 Always 1 for a block table
-    types::MemoryAttr mem_attr : 4;  // @2-5
-    types::S2AP s2ap : 2;            // @6-7
-    types::SH sh : 2;                // @8-9
-    types::AF af : 1;                // @10 Accessable flag
-    uint64_t _reserved1 : (AddressStartBit() - 11);  // @11-(X-1) Set to 0
-    uint64_t address : (48 - AddressStartBit());     // @X-47 N Bits of address
-    uint64_t _reserved48_51 : 4;                     // @48-51 Set to 0
-    types::Contiguous contiguous : 1;                // @52 Contiguous
-    uint64_t _reserved53 : 1;                        // @53 Set to 0
-    types::XN xn : 1;             // @54 No execute if bit set
-    uint64_t _reserved55_63 : 9;  // @55-63 Set to 0
-  };
-
-  Layout data;
+                "Wrong combination");
 };
 
 static_assert(

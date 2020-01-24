@@ -8,6 +8,8 @@ set(SOURCE ${SOURCE}
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduler/routine.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduler/routine_static_wrapper.h
 
+  ${CMAKE_CURRENT_SOURCE_DIR}/utils/register.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/utils/enum_iterator.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/pool.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/allocator.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/boot_allocator.h

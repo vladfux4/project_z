@@ -17,71 +17,20 @@ GNU General Public License for more details.
 #ifndef ARCH_ARM64_MM_TRANSLATION_TABLE_H_
 #define ARCH_ARM64_MM_TRANSLATION_TABLE_H_
 
-#include <assert.h>
-#include <stdint.h>
+#include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <type_traits>
 #include <utility>
 
 #include "arch/arm64/mm/translation_descriptor.h"
 #include "kernel/logger.h"
 #include "kernel/mm/allocator.h"
-
-// Default placement versions of operator new.
-inline void* operator new(size_t, void* __p) { return __p; }
-inline void* operator new[](size_t, void* __p) { return __p; }
+#include "kernel/utils/enum_iterator.h"
 
 namespace arch {
 namespace arm64 {
 namespace mm {
-
-enum class LookupLevel : uint8_t {
-  _1 = 1,
-  _2 = 2,
-  _3 = 3,
-  _4 = 4,
-};
-
-using LookupLevelInt = std::underlying_type<LookupLevel>::type;
-
-template <typename T,
-          typename std::underlying_type<T>::type kEnd =
-              static_cast<typename std::underlying_type<T>::type>(-1)>
-class EnumIterator {
- public:
-  using UnderlyingType = typename std::underlying_type<T>::type;
-
-  constexpr EnumIterator(T value) : value_(value) {}
-
-  const auto& Value() { return value_; }
-  static const auto& End() { return end_; }
-
-  const UnderlyingType& Int() {
-    return *reinterpret_cast<UnderlyingType*>(&value_);
-  }
-
-  EnumIterator& operator++(int) {
-    value_ = static_cast<T>(Int() + 1);
-    return *this;
-  }
-
-  EnumIterator& operator--(int) {
-    value_ = static_cast<T>(Int() - 1);
-    return *this;
-  }
-
-  bool operator!=(const EnumIterator& obj) const {
-    return (obj.value_ != value_);
-  }
-
- private:
-  static const EnumIterator end_;
-  T value_;
-};
-
-template <typename T, typename std::underlying_type<T>::type kEnd>
-const EnumIterator<T, kEnd> EnumIterator<T, kEnd>::end_ =
-    EnumIterator(static_cast<T>(kEnd));
 
 template <kernel::mm::PageSize size>
 struct TableEntryCount {};
@@ -100,6 +49,15 @@ template <>
 struct TableEntryCount<kernel::mm::PageSize::_64KB> {
   static constexpr size_t value = (1ULL << 13);
 };
+
+enum class LookupLevel : uint8_t {
+  _1 = 1,
+  _2 = 2,
+  _3 = 3,
+  _4 = 4,
+};
+
+using LookupLevelInt = std::underlying_type<LookupLevel>::type;
 
 template <kernel::mm::PageSize kPageSize>
 struct DescriptorTable {
@@ -232,12 +190,12 @@ class TranslationTable {
   using Allocator = AllocatorBase<Table>;
 
   struct EntryParameters {
-    types::MemoryAttr mem_attr;
-    types::S2AP s2ap;
-    types::SH sh;
-    types::AF af;
-    types::Contiguous contiguous;
-    types::XN xn;
+    MemoryAttr mem_attr;
+    S2AP s2ap;
+    SH sh;
+    AF af;
+    Contiguous contiguous;
+    XN xn;
   };
 
   TranslationTable(Allocator& alloc) : alloc_(alloc), root_table_(nullptr) {
@@ -256,25 +214,29 @@ class TranslationTable {
 
   std::pair<Table*, LookupLevel> CreateTableChain(const void* v_ptr,
                                                   const BlockSize size) {
-    using LevelIterator = EnumIterator<LookupLevel, 0>;
+    using LevelIterator = utils::EnumIterator<LookupLevel, 0>;
     auto it = LevelIterator(Config::kTableLevel);
     Table* table = root_table_;
     for (; (LevelIterator::End() != it) &&
            (Config::CalcBlockSizeFromTableLevel(it.Value()) != size);
          it--) {
       size_t index = Config::CalcIndex(v_ptr, it.Value());
-      Table* next_level_table = reinterpret_cast<Table*>(
-          Table::TableItem::ToAddress(table->data[index].Table().data.address));
+      Table* next_level_table =
+          reinterpret_cast<Table*>(table->data[index].Table().GetAddress());
       if (nullptr == next_level_table) {
         DDBG_LOG("current level: ", it.Int());
         DDBG_LOG("table index: ", index);
 
         next_level_table = MakeTable();
-        table->data[index] = typename Table::TableItem(
-            types::Entry::ENTRY_TABLE,
-            Table::TableItem::ToTableAddress(next_level_table),
-            types::PXN_EXECUTE, types::XN_EXECUTE, types::AP_NOEFFECT,
-            types::NSTABLE_NON_SECURE);
+        auto new_item = typename Table::TableItem();
+        new_item.Set(typename Table::TableItem::EntryType(EntryType::TABLE),
+                     typename Table::TableItem::Address(
+                         Table::TableItem::ToTableAddress(next_level_table)),
+                     typename Table::TableItem::PXN(PXN::EXECUTE),
+                     typename Table::TableItem::XN(XN::EXECUTE),
+                     typename Table::TableItem::AP(AP::NOEFFECT),
+                     typename Table::TableItem::NsTable(NSTable::NON_SECURE));
+        table->data[index] = new_item;
       }
 
       table = next_level_table;
@@ -287,8 +249,8 @@ class TranslationTable {
                    const EntryParameters& param, const LookupLevel level,
                    Table* table) {
     uint64_t address = Config::CalcEntryAddress(p_ptr, level);
-    auto entry_type = (Config::kMinBlockSize == size) ? types::ENTRY_TABLE
-                                                      : types::ENTRY_BLOCK;
+    auto entry_type =
+        (Config::kMinBlockSize == size) ? EntryType::TABLE : EntryType::BLOCK;
     const auto index = Config::CalcIndex(v_ptr, level);
     auto& entry = table->data[index];
 
@@ -306,11 +268,19 @@ class TranslationTable {
   }
 
   template <TableLvl kLvl>
-  auto MakeEntry(const types::Entry entry_type, const uint64_t address,
+  auto MakeEntry(const EntryType entry_type, const uint64_t address,
                  const EntryParameters& param) {
-    return typename Table::template EntryItem<kLvl>(
-        entry_type, address, param.mem_attr, param.s2ap, param.sh, param.af,
-        param.contiguous, param.xn);
+    using Entry = typename Table::template EntryItem<kLvl>;
+    auto entry = Entry();
+    entry.Set(typename Entry::EntryType(entry_type),
+              typename Entry::Address(address),
+              typename Entry::MemoryAttr(param.mem_attr),
+              typename Entry::S2AP(param.s2ap), typename Entry::SH(param.sh),
+              typename Entry::AF(param.af),
+              typename Entry::Contiguous(param.contiguous),
+              typename Entry::XN(param.xn));
+
+    return entry;
   }
 
   Table* MakeTable() {
