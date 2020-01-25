@@ -37,16 +37,6 @@ struct Offset<FieldAlias, It, 0> {
   constexpr static std::size_t Value(std::size_t offset = 0) { return offset; }
 };
 
-template <typename Value>
-constexpr static auto Sum(Value arg) {
-  return arg;
-}
-
-template <typename Value, typename... Rest>
-constexpr static auto Sum(Value arg, Rest... args) {
-  return arg + Sum(args...);
-}
-
 template <typename RawType, typename... Fields>
 struct StaticRegister {
   using RegisterType = RawType;
@@ -59,8 +49,8 @@ struct StaticRegister {
     static constexpr RawType mask = (static_cast<RawType>(1) << length) - 1;
     static constexpr std::size_t index = Index;
 
-    FieldIndex(Type value) : value(value) {}
-    FieldIndex() : value() {}
+    constexpr FieldIndex(Type value) : value(value) {}
+    constexpr FieldIndex() : value() {}
 
     Type value;
   };
@@ -79,31 +69,18 @@ struct StaticRegister {
   template <typename T>
   using is_in_register = std::is_same<FieldAlias<T::index>, T>;
 
-  template <typename Arg, typename... Rest>
-  using is_double_in_pack =
-      std::is_same<Arg, std::tuple_element_t<0, std::tuple<Rest...>>>;
-
   template <std::size_t Index>
   constexpr static std::size_t GetOffset() {
     return Offset<FieldAlias, 0, Index>::Value();
   }
 
   template <typename... Args>
-  constexpr static RawType MakeValue(Args... args) {
-    return DoMakeValue(args...);
-  }
-
-  template <typename Arg, typename... Rest>
-  constexpr static RawType DoMakeValue(Arg arg, Rest... args) {
-    static_assert(!is_double_in_pack<Arg, Rest...>::value,
-                  "Input field parameter is not unique");
-    auto value = DoMakeValue(arg);
-    value |= DoMakeValue(args...);
-    return value;
+  constexpr static RawType MakeValue(const Args... args) {
+    return (DoMakeValue(args) | ...);
   }
 
   template <typename Arg>
-  constexpr static RawType DoMakeValue(Arg arg) {
+  constexpr static RawType DoMakeValue(const Arg arg) {
     static_assert(is_in_register<Arg>::value,
                   "Input field parameter is not member of register");
     return static_cast<RawType>((static_cast<RawType>(arg.value) & arg.mask)
@@ -111,7 +88,7 @@ struct StaticRegister {
   }
 
   template <typename Arg>
-  constexpr static typename Arg::Type GetValue(RawType raw) {
+  constexpr static typename Arg::Type GetValue(const RawType raw) {
     static_assert(is_in_register<Arg>::value,
                   "Input field parameter is not member of register");
     return static_cast<typename Arg::Type>((raw >> GetOffset<Arg::index>()) &
@@ -119,21 +96,12 @@ struct StaticRegister {
   }
 
   template <typename... Args>
-  constexpr static RawType MakeMask(Args... args) {
-    return DoMakeMask(args...);
-  }
-
-  template <typename Arg, typename... Rest>
-  constexpr static RawType DoMakeMask(Arg arg, Rest... args) {
-    static_assert(!is_double_in_pack<Arg, Rest...>::value,
-                  "Input field parameter is not unique");
-    auto mask = DoMakeMask(arg);
-    mask |= DoMakeMask(args...);
-    return mask;
+  constexpr static RawType MakeMask(const Args... args) {
+    return (DoMakeMask(args) | ...);
   }
 
   template <typename Arg>
-  constexpr static RawType DoMakeMask(Arg arg) {
+  constexpr static RawType DoMakeMask(const Arg arg) {
     (void)arg;
     static_assert(is_in_register<Arg>::value,
                   "Input field parameter is not member of register");
@@ -141,14 +109,15 @@ struct StaticRegister {
   }
 
   template <typename... Args>
-  constexpr static RawType Set(RawType raw, Args... args) {
+  constexpr static RawType Set(const RawType raw, const Args... args) {
     auto result = raw;
     result &= ~MakeMask(args...);
     result |= MakeValue(args...);
     return result;
   }
 
-  static_assert(Sum(Fields::length...) <= SizeInBits<RawType>(), "");
+  static_assert((Fields::length + ...) <= SizeInBits<RawType>(),
+                "Fields length is out of base type size");
 };
 
 template <typename Register>
@@ -169,7 +138,7 @@ struct Register : StaticRegister<RawType, Fields...> {
   }
 
   template <typename... Args>
-  void Set(Args... args) {
+  void Set(const Args... args) {
     value = StaticInterface::Set(value, args...);
   }
 
