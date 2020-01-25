@@ -17,13 +17,13 @@ GNU General Public License for more details.
 #include "arch/arm64/mm/mmu.h"
 
 #include "arch/arm64/mm/translation_descriptor.h"
+#include "kernel/config.h"
 
 namespace arch {
 namespace arm64 {
 namespace mm {
 
-MMU::MMU(const uint8_t address_length)
-    : kAddressLength(address_length), tcr_() {}
+MMU::MMU() : tcr_() {}
 
 void MMU::Enable() {
   uint64_t r;
@@ -37,17 +37,24 @@ void MMU::Enable() {
        (0xffull << (static_cast<std::size_t>(MemoryAttr::NORMAL) * 8)));
   asm volatile("msr mair_el1, %0" : : "r"(r));
 
-  // set TCR
-  tcr_ = TCR::ToRaw(TCR::IPS::_32_BIT) | TCR::ToRaw(TCR::TG1::_4KB) |
-         TCR::ToRaw(TCR::SH1::INNER_SHAREABLE) |
-         TCR::ToRaw(TCR::ORGN1::WRITE_BACK_CACHEABLE) |
-         TCR::ToRaw(TCR::IRGN1::WRITE_BACK_CACHEABLE) |
-         TCR::ToRaw(TCR::EPD1::WALK) | TCR::ToT1SZRaw(kAddressLength) |
-         TCR::ToRaw(TCR::TG0::_4KB) | TCR::ToRaw(TCR::SH0::INNER_SHAREABLE) |
-         TCR::ToRaw(TCR::ORGN0::WRITE_BACK_CACHEABLE) |
-         TCR::ToRaw(TCR::IRGN0::WRITE_BACK_CACHEABLE) |
-         TCR::ToRaw(TCR::EPD0::WALK) | TCR::ToT0SZRaw(kAddressLength);
-  tcr_.Flush();
+  constexpr auto trc_value = tcr::TcrRegister::MakeValue(
+      tcr::TcrRegister::IPS(tcr::IPS::_32_BIT),
+      tcr::TcrRegister::TG1(tcr::TG1::_4KB),
+      tcr::TcrRegister::SH1(tcr::SH1::INNER_SHAREABLE),
+      tcr::TcrRegister::ORGN1(tcr::ORGN1::WRITE_BACK_CACHEABLE),
+      tcr::TcrRegister::IRGN1(tcr::IRGN1::WRITE_BACK_CACHEABLE),
+      tcr::TcrRegister::EPD1(tcr::EPD1::WALK),
+      tcr::TcrRegister::T1SZ(
+          tcr::TcrRegister::ConvertToTnSZ(kernel::mm::KERNEL_ADDRESS_LENGTH)),
+      tcr::TcrRegister::TG0(tcr::TG0::_4KB),
+      tcr::TcrRegister::SH0(tcr::SH0::INNER_SHAREABLE),
+      tcr::TcrRegister::ORGN0(tcr::ORGN0::WRITE_BACK_CACHEABLE),
+      tcr::TcrRegister::IRGN0(tcr::IRGN0::WRITE_BACK_CACHEABLE),
+      tcr::TcrRegister::EPD0(tcr::EPD0::WALK),
+      tcr::TcrRegister::T0SZ(
+          tcr::TcrRegister::ConvertToTnSZ(kernel::mm::KERNEL_ADDRESS_LENGTH)));
+  tcr_.Set(trc_value);
+  tcr_.FlushToEl1();
 
   // toggle some bits in system control register to enable page translation
   asm volatile("isb; mrs %0, sctlr_el1" : "=r"(r));

@@ -22,7 +22,7 @@ namespace kernel {
 namespace mm {
 
 Memory::Memory()
-    : mmu_(KERNEL_ADDRESS_LENGTH),
+    : mmu_(),
       boot_allocator_(&__kernel_boot_heap),
       pages_(nullptr),
       p_table_(boot_allocator_),

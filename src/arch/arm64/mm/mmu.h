@@ -30,10 +30,8 @@ class MMU {
  public:
   /**
    * @brief Constructor
-   *
-   * @param address_length Address length
    */
-  MMU(const uint8_t address_length);
+  MMU();
 
   /**
    * @brief Enable MMU
@@ -59,27 +57,22 @@ class MMU {
    * @brief Set 0 translation table address
    */
   __attribute__((always_inline)) void SetTTBR0(void* address) {
-    asm volatile ("msr ttbr0_el1, %0" : : "r" (address));
+    asm volatile("msr ttbr0_el1, %0" : : "r"(address));
   }
 
   /**
    * @brief Set 1 translation table address
    */
   __attribute__((always_inline)) void SetTTBR1(void* address) {
-    asm volatile ("msr ttbr1_el1, %0" : : "r" (address));
+    asm volatile("msr ttbr1_el1, %0" : : "r"(address));
   }
 
-  const uint8_t kAddressLength;
-  TCR tcr_;
+  tcr::TcrRegister tcr_;
 };
 
-inline void MMU::SetUserTable(void* address) {
-  SetTTBR0(address);
-}
+inline void MMU::SetUserTable(void* address) { SetTTBR0(address); }
 
-inline void MMU::SetKernelTable(void* address) {
-  SetTTBR1(address);
-}
+inline void MMU::SetKernelTable(void* address) { SetTTBR1(address); }
 
 }  // namespace mm
 }  // namespace arm64

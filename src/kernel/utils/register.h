@@ -142,6 +142,8 @@ struct Register : StaticRegister<RawType, Fields...> {
     value = StaticInterface::Set(value, args...);
   }
 
+  void Set(const RawType raw) { value = raw; }
+
   template <class Arg>
   auto Get() {
     return StaticInterface::template GetValue<Arg>(value);
