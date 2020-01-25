@@ -27,6 +27,7 @@ GNU General Public License for more details.
 #include "kernel/logger.h"
 #include "kernel/mm/allocator.h"
 #include "kernel/utils/enum_iterator.h"
+#include "kernel/utils/variant.h"
 
 namespace arch {
 namespace arm64 {
@@ -61,46 +62,18 @@ using LookupLevelInt = std::underlying_type<LookupLevel>::type;
 
 template <kernel::mm::PageSize kPageSize>
 struct DescriptorTable {
+ public:
   using TableItem = TableDescriptor<kPageSize>;
 
   template <TableLvl kLevel>
   using EntryItem = EntryDescriptor<kPageSize, kLevel>;
 
-  struct Item {
-    union Value {
-      TableItem table;
-      EntryItem<TableLvl::_1> entry_1;
-      EntryItem<TableLvl::_2> entry_2;
-      EntryItem<TableLvl::_3> entry_3;
+  using Item = utils::Variant<TableItem, TableItem, EntryItem<TableLvl::_1>,
+                              EntryItem<TableLvl::_2>, EntryItem<TableLvl::_3>>;
 
-      Value() { new (&table) TableItem(); }
-    };
+  Item& at(const size_t i) { return data[i]; }
 
-    auto& Table() { return value.table; }
-
-    Item& operator=(const TableItem& item) {
-      value.table = item;
-      return *this;
-    }
-
-    Item& operator=(const EntryItem<TableLvl::_1>& item) {
-      value.entry_1 = item;
-      return *this;
-    }
-
-    Item& operator=(const EntryItem<TableLvl::_2>& item) {
-      value.entry_2 = item;
-      return *this;
-    }
-
-    Item& operator=(const EntryItem<TableLvl::_3>& item) {
-      value.entry_3 = item;
-      return *this;
-    }
-
-    Value value;
-  };
-
+ private:
   Item data[TableEntryCount<kPageSize>::value];
 };
 
@@ -221,8 +194,11 @@ class TranslationTable {
            (Config::CalcBlockSizeFromTableLevel(it.Value()) != size);
          it--) {
       size_t index = Config::CalcIndex(v_ptr, it.Value());
-      Table* next_level_table =
-          reinterpret_cast<Table*>(table->data[index].Table().GetAddress());
+      Table* next_level_table = reinterpret_cast<Table*>(
+          table->at(index)
+              .template Get<typename Table::TableItem>()
+              .GetAddress());
+
       if (nullptr == next_level_table) {
         DDBG_LOG("current level: ", it.Int());
         DDBG_LOG("table index: ", index);
@@ -236,7 +212,7 @@ class TranslationTable {
                      typename Table::TableItem::XN(XN::EXECUTE),
                      typename Table::TableItem::AP(AP::NOEFFECT),
                      typename Table::TableItem::NsTable(NSTable::NON_SECURE));
-        table->data[index] = new_item;
+        table->at(index) = new_item;
       }
 
       table = next_level_table;
@@ -252,7 +228,7 @@ class TranslationTable {
     auto entry_type =
         (Config::kMinBlockSize == size) ? EntryType::TABLE : EntryType::BLOCK;
     const auto index = Config::CalcIndex(v_ptr, level);
-    auto& entry = table->data[index];
+    auto& entry = table->at(index);
 
     DDBG_LOG("New etry. table level: ", static_cast<LookupLevelInt>(level));
     DDBG_LOG("entry index: ", index);
