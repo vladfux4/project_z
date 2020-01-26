@@ -17,14 +17,13 @@ GNU General Public License for more details.
 #ifndef KERNEL_MM_MEMORY_H_
 #define KERNEL_MM_MEMORY_H_
 
-#include <stdint.h>
 #include <cstddef>
+#include <cstdint>
 
 #include "arch/arm64/mm/translation_table.h"
 #include "gen/arch_types_gen.h"
 #include "kernel/config.h"
 #include "kernel/mm/boot_allocator.h"
-#include "kernel/mm/page_registry.h"
 
 namespace kernel {
 namespace mm {
@@ -45,8 +44,6 @@ class Memory {
       TranslationTable;
 
   arch::mm::MMU mmu_;
-  TranslationTable::Allocator boot_allocator_;
-  PageRegistry* pages_;
   TranslationTable p_table_;
   TranslationTable v_table_;
 };

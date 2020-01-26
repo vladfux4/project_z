@@ -21,12 +21,7 @@ extern uint8_t __kernel_boot_heap;
 namespace kernel {
 namespace mm {
 
-Memory::Memory()
-    : mmu_(),
-      boot_allocator_(&__kernel_boot_heap),
-      pages_(nullptr),
-      p_table_(boot_allocator_),
-      v_table_(boot_allocator_) {}
+Memory::Memory() : mmu_(), p_table_(), v_table_() {}
 
 Memory::~Memory() {}
 

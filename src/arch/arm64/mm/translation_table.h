@@ -25,7 +25,6 @@ GNU General Public License for more details.
 
 #include "arch/arm64/mm/translation_descriptor.h"
 #include "kernel/logger.h"
-#include "kernel/mm/allocator.h"
 #include "kernel/utils/enum_iterator.h"
 #include "kernel/utils/variant.h"
 
@@ -171,7 +170,7 @@ class TranslationTable {
     XN xn;
   };
 
-  TranslationTable(Allocator& alloc) : alloc_(alloc), root_table_(nullptr) {
+  TranslationTable() : root_table_(nullptr) {
     DDBG_LOG("Constructor");
     root_table_ = MakeTable();
   }
@@ -260,13 +259,12 @@ class TranslationTable {
   }
 
   Table* MakeTable() {
-    Table* table = new (alloc_.AllocateAligned(sizeof(Table))) Table();
+    Table* table = new (Allocator::Allocate(1, sizeof(Table))) Table();
     DDBG_LOG("New table ptr: ", reinterpret_cast<uint64_t>(table));
     return table;
   }
 
  private:
-  Allocator& alloc_;
   Table* root_table_;
 };
 

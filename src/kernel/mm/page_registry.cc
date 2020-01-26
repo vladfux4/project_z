@@ -19,9 +19,9 @@ GNU General Public License for more details.
 namespace kernel {
 namespace mm {
 
-PageRegistry::PageRegistry(const uint8_t* begin, const uint8_t* end,
-                           Allocator& alloc)
-    : page_pool_(nullptr) {
+PageRegistry::PageRegistry(const uint8_t* begin, const uint8_t* end) {
+  (void)begin;
+  (void)end;
 }
 
 }  // namespace mm

@@ -17,112 +17,82 @@ GNU General Public License for more details.
 #ifndef KERNEL_MM_POOL_H_
 #define KERNEL_MM_POOL_H_
 
-#include <stdint.h>
-#include "kernel/mm/allocator.h"
-
 namespace kernel {
 namespace mm {
 
-/**
- * @brief The Memory Pool class
- */
-template <class Item, class Index>
-class Pool {
+template <class Index, template <class> class AllocatorBase>
+class IndexPool {
  public:
-  /**
-   * @brief Constructor
-   */
-  Pool(Item* buffer, const Index size, Allocator& allocator);
+  IndexPool(const Index size)
+      : kSize(size), head_(0), free_items_(size), index_list_(nullptr) {
+    index_list_ = IndexAllocator::Allocate(kSize);
+    for (Index i = 0; i < kSize; ++i) {
+      index_list_[i].next = (i + 1);
+    }
+  }
 
-  /**
-   * @brief Destructor
-   */
-  ~Pool();
+  ~IndexPool() { IndexAllocator::Deallocate(index_list_); }
 
-  /**
-   * @brief Allocate item in pool
-   *
-   * @return address
-   */
-  Item* Allocate();
+  Index Allocate() {
+    Index ret_val = kNoIndex;
+    if (0 != free_items_) {
+      ret_val = head_;
+      free_items_--;
+      head_ = index_list_[head_].next;
+    }
 
-  /**
-   * @brief Deallocate item from pool
-   *
-   * @param item Pointer in item
-   */
-  void Deallocate(Item* item);
+    return ret_val;
+  }
 
-  /**
-   * @brief Get size of pool
-   *
-   * @return elements count
-   */
-  inline Index Size() const { return kSize; }
+  void Deallocate(const Index index) {
+    index_list_[index].next = head_;
+    head_ = index;
+    free_items_++;
+  }
 
-  /**
-   * @brief Get free items count
-   *
-   * @return count
-   */
-  inline Index FreeItems() const { return free_items_; }
+  Index Size() const { return kSize; }
+  Index FreeItems() const { return free_items_; }
+
+  static constexpr Index kNoIndex = static_cast<Index>(-1);
 
  private:
-  /**
-   * @brief The Index Data struct
-   */
   struct IndexData {
     Index next;
   };
 
+  using IndexAllocator = AllocatorBase<IndexData>;
+
   const Index kSize;
-  Allocator& allocator_;
   Index head_;
   Index free_items_;
   IndexData* index_list_;
-  Item* buffer_;
 };
 
-template<class Item, class Index>
-Pool<Item, Index>::Pool(Item* buffer, const Index size,
-                        Allocator& allocator)
-    : kSize(size),
-      allocator_(allocator),
-      head_(0),
-      free_items_(size),
-      index_list_(nullptr),
-      buffer_(buffer) {
-  index_list_ = reinterpret_cast<IndexData*>(allocator.Allocate(kSize * sizeof(IndexData)));
-  for (Index i = 0; i < kSize; ++i) {
-    index_list_[i].next = (i + 1);
-  }
-}
+template <class T, class Index, template <class> class AllocatorBase>
+class Pool : public IndexPool<Index, AllocatorBase> {
+ public:
+  using IndexPoolType = IndexPool<Index, AllocatorBase>;
 
-template<class Item, class Index>
-Pool<Item, Index>::~Pool() {
-  allocator_.Deallocate(index_list_);
-}
+  Pool(T* buffer, const Index size) : IndexPoolType(size), buffer_(buffer) {}
 
-template<class Item, class Index>
-Item* Pool<Item, Index>::Allocate() {
-  Item* ret_val = nullptr;
+  T* Allocate() {
+    T* ret_val = nullptr;
+    auto index = IndexPoolType::Allocate();
+    if (IndexPoolType::kNoIndex != index) {
+      ret_val = &buffer_[index];
+    }
 
-  if (0 != free_items_) {
-    ret_val = &buffer_[head_];
-    free_items_--;
-    head_ = index_list_[head_].next;
+    return ret_val;
   }
 
-  return ret_val;
-}
+  void Deallocate(const T* item) {
+    Index index = (item - buffer_);
+    IndexPoolType::Deallocate(index);
+  }
 
-template<class Item, class Index>
-void Pool<Item, Index>::Deallocate(Item* item) {
-  Index index = (item - buffer_);
-  index_list_[index].next = head_;
-  head_ = index;
-  free_items_++;
-}
+ private:
+  T* buffer_;
+};
 
 }  // namespace mm
 }  // namespace kernel

@@ -14,36 +14,14 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef KERNEL_MM_PAGE_MAP_
-#define KERNEL_MM_PAGE_MAP_
+#include "kernel/mm/boot_stack.h"
 
-#include <stdint.h>
-
-#include <cstddef>
-
-#include "kernel/config.h"
-#include "kernel/mm/pool.h"
+extern uint8_t __kernel_boot_heap;
 
 namespace kernel {
 namespace mm {
 
-struct Page {
-  uint8_t data;
-};
-
-/**
- * @brief The Page registry class
- */
-class PageRegistry {
- public:
-  PageRegistry(const uint8_t* begin, const uint8_t* end);
-
- private:
-  //  typedef Pool<Page, size_t, Boo> PagePool;
-  //  PagePool* page_pool_;
-};
+uint8_t* BootStack::head_ = &__kernel_boot_heap;
 
 }  // namespace mm
 }  // namespace kernel
-
-#endif  // KERNEL_MM_PAGE_MAP_

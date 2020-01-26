@@ -14,53 +14,36 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef KERNEL_MM_ALLOCATOR_H_
-#define KERNEL_MM_ALLOCATOR_H_
+#ifndef KERNEL_MM_BOOT_STACK_H_
+#define KERNEL_MM_BOOT_STACK_H_
 
-#include <stdint.h>
 #include <cstddef>
+#include <cstdint>
 
 namespace kernel {
 namespace mm {
 
-/**
- * @brief The Allocator class
- */
-class Allocator {
+class BootStack {
  public:
-  /**
-   * @brief Destructor
-   */
-  virtual ~Allocator() {}
+  static uint8_t* Push(const size_t bytes, const size_t alignment = 0) {
+    uint8_t* ret_val = head_;
+    if (0 != alignment) {
+      while (0 != (reinterpret_cast<size_t>(head_) % alignment)) {
+        head_++;
+      }
+    }
 
-  /**
-   * @brief Allocate
-   *
-   * @param size Size in bytes
-   *
-   * @return pointer
-   */
-  virtual void* Allocate(const size_t size) = 0;
+    head_ += bytes;
+    return ret_val;
+  }
 
-  /**
-   * @brief Allocate
-   *
-   * @param size Size in bytes
-   * @param aligned Aligment in bytes
-   *
-   * @return pointer
-   */
-  virtual void* Allocate(const size_t size, const size_t aligned) = 0;
+  static inline const uint8_t* GetHead() { return head_; }
 
-  /**
-   * @brief Deallocate
-   *
-   * @param ptr Pointer on allocated area
-   */
-  virtual void Deallocate(void* ptr) = 0;
+ private:
+  static uint8_t* head_;
 };
 
 }  // namespace mm
 }  // namespace kernel
 
-#endif  // KERNEL_MM_ALLOCATOR_H_
+#endif  // KERNEL_MM_BOOT_STACK_H_
