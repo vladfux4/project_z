@@ -16,12 +16,10 @@ GNU General Public License for more details.
 =============================================================================*/
 #include "kernel/mm/memory.h"
 
-extern uint8_t __kernel_boot_heap;
-
 namespace kernel {
 namespace mm {
 
-Memory::Memory() : mmu_(), p_table_(), v_table_() {}
+Memory::Memory() : mmu_(), p_space_(), v_space_(), memory_pool_(nullptr) {}
 
 Memory::~Memory() {}
 
@@ -32,42 +30,51 @@ void Memory::Init() {
   // 880Mb of ram
   for (; base < 440; base++) {  // 4440
     void* address = reinterpret_cast<void*>(base << 21);
-    p_table_.Map(address, address, TranslationTable::BlockSize::_2MB,
-                 {MemoryAttr::NORMAL, S2AP::NORMAL, SH::INNER_SHAREABLE,
-                  AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
+    p_space_.translation_table.Map(
+        address, address, TranslationTable::BlockSize::_2MB,
+        {MemoryAttr::NORMAL, S2AP::NORMAL, SH::INNER_SHAREABLE, AF::IGNORE,
+         Contiguous::OFF, XN::EXECUTE});
   }
 
   // VC ram up to 0x3F000000
   for (; base < 512 - 8; base++) {
     void* address = reinterpret_cast<void*>(base << 21);
-    p_table_.Map(address, address, TranslationTable::BlockSize::_2MB,
-                 {MemoryAttr::NORMAL_NC, S2AP::NORMAL, SH::NON_SHAREABLE,
-                  AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
+    p_space_.translation_table.Map(
+        address, address, TranslationTable::BlockSize::_2MB,
+        {MemoryAttr::NORMAL_NC, S2AP::NORMAL, SH::NON_SHAREABLE, AF::IGNORE,
+         Contiguous::OFF, XN::EXECUTE});
   }
 
   // 16 MB peripherals at 0x3F000000 - 0x40000000
   for (; base < 512; base++) {
     void* address = reinterpret_cast<void*>(base << 21);
-    p_table_.Map(address, address, TranslationTable::BlockSize::_2MB,
-                 {MemoryAttr::DEVICE_NGNRNE, S2AP::NORMAL, SH::NON_SHAREABLE,
-                  AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
+    p_space_.translation_table.Map(
+        address, address, TranslationTable::BlockSize::_2MB,
+        {MemoryAttr::DEVICE_NGNRNE, S2AP::NORMAL, SH::NON_SHAREABLE, AF::IGNORE,
+         Contiguous::OFF, XN::EXECUTE});
   }
 
   // 2 MB for mailboxes at 0x40000000
   void* address = reinterpret_cast<void*>(base << 21);
-  p_table_.Map(address, address, TranslationTable::BlockSize::_2MB,
-               {MemoryAttr::DEVICE_NGNRNE, S2AP::NORMAL, SH::NON_SHAREABLE,
-                AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
+  p_space_.translation_table.Map(
+      address, address, TranslationTable::BlockSize::_2MB,
+      {MemoryAttr::DEVICE_NGNRNE, S2AP::NORMAL, SH::NON_SHAREABLE, AF::IGNORE,
+       Contiguous::OFF, XN::EXECUTE});
 
-  mmu_.SetUserTable(p_table_.GetBase());
+  mmu_.SetLowerTable(p_space_.translation_table.GetBase());
 
-  v_table_.Map(reinterpret_cast<void*>(0xFFFFFFFFFFE00000),
-               reinterpret_cast<void*>(0x0000),
-               TranslationTable::BlockSize::_4KB,
-               {MemoryAttr::NORMAL, S2AP::NORMAL, SH::INNER_SHAREABLE,
-                AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
+  size_t memory_size = (880 * (1ULL << 20));  // 880Mb of ram
+  DDBG_LOG("pool size: ", memory_size);
+  memory_pool_ = BootAllocator<MemoryPool>::Allocate();
+  new (memory_pool_) MemoryPool(memory_size);
 
-  mmu_.SetKernelTable(v_table_.GetBase());
+  v_space_.translation_table.Map(
+      reinterpret_cast<void*>(0xFFFFFFFFFFE00000),
+      reinterpret_cast<void*>(0x0000), TranslationTable::BlockSize::_4KB,
+      {MemoryAttr::NORMAL, S2AP::NORMAL, SH::INNER_SHAREABLE, AF::IGNORE,
+       Contiguous::OFF, XN::EXECUTE});
+
+  mmu_.SetHigherTable(v_space_.translation_table.GetBase());
 
   mmu_.Enable();
 }

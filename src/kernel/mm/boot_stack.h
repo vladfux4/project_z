@@ -20,20 +20,25 @@ GNU General Public License for more details.
 #include <cstddef>
 #include <cstdint>
 
+#include "kernel/logger.h"
+
 namespace kernel {
 namespace mm {
 
 class BootStack {
  public:
   static uint8_t* Push(const size_t bytes, const size_t alignment = 0) {
-    uint8_t* ret_val = head_;
     if (0 != alignment) {
       while (0 != (reinterpret_cast<size_t>(head_) % alignment)) {
         head_++;
       }
     }
 
+    uint8_t* ret_val = head_;
     head_ += bytes;
+
+    DDBG_LOG("boot_stack alloc size: ", bytes);
+    DDBG_LOG("boot_stack ptr: ", reinterpret_cast<uint64_t>(ret_val));
     return ret_val;
   }
 

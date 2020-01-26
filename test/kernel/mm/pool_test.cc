@@ -15,9 +15,9 @@ class Allocator {
 
 class PoolTest : public ::testing::Test {
  protected:
-  PoolTest() : buffer(new uint32_t[32]), pool(buffer, 32) {}
+  PoolTest() : pool(32) {}
 
-  virtual ~PoolTest() { delete[] buffer; }
+  virtual ~PoolTest() {}
 
   void New() {
     uint32_t* ptr = pool.Allocate();
@@ -45,7 +45,6 @@ class PoolTest : public ::testing::Test {
     }
   }
 
-  uint32_t* buffer;
   kernel::mm::Pool<uint32_t, size_t, Allocator> pool;
   std::vector<std::pair<uint32_t*, uint32_t>> data;
   uint32_t index = 0;

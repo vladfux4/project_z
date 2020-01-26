@@ -199,8 +199,8 @@ class TranslationTable {
               .GetAddress());
 
       if (nullptr == next_level_table) {
-        DDBG_LOG("current level: ", it.Int());
-        DDBG_LOG("table index: ", index);
+        //        DDBG_LOG("current level: ", it.Int());
+        //        DDBG_LOG("table index: ", index);
 
         next_level_table = MakeTable();
         auto new_item = typename Table::TableItem();
@@ -229,9 +229,9 @@ class TranslationTable {
     const auto index = Config::CalcIndex(v_ptr, level);
     auto& entry = table->at(index);
 
-    DDBG_LOG("New etry. table level: ", static_cast<LookupLevelInt>(level));
-    DDBG_LOG("entry index: ", index);
-    DDBG_LOG("address: ", address);
+    //    DDBG_LOG("New etry. table level: ",
+    //    static_cast<LookupLevelInt>(level)); DDBG_LOG("entry index: ", index);
+    //    DDBG_LOG("address: ", address);
 
     if (LookupLevel::_3 == level) {
       entry = MakeEntry<TableLvl::_1>(entry_type, address, param);
@@ -260,7 +260,7 @@ class TranslationTable {
 
   Table* MakeTable() {
     Table* table = new (Allocator::Allocate(1, sizeof(Table))) Table();
-    DDBG_LOG("New table ptr: ", reinterpret_cast<uint64_t>(table));
+    //    DDBG_LOG("New table ptr: ", reinterpret_cast<uint64_t>(table));
     return table;
   }
 

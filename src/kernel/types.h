@@ -17,6 +17,8 @@ GNU General Public License for more details.
 #ifndef KERNEL_TYPES_H_
 #define KERNEL_TYPES_H_
 
+#include <cstddef>
+
 namespace kernel {
 namespace mm {
 
@@ -27,6 +29,24 @@ enum class PageSize {
   _4KB,
   _16KB,
   _64KB,
+};
+
+template <PageSize size>
+struct PageSizeInfo {};
+
+template <>
+struct PageSizeInfo<PageSize::_4KB> {
+  static constexpr size_t in_bytes = (1ULL << 12);
+};
+
+template <>
+struct PageSizeInfo<PageSize::_16KB> {
+  static constexpr size_t in_bytes = (1ULL << 14);
+};
+
+template <>
+struct PageSizeInfo<PageSize::_64KB> {
+  static constexpr size_t in_bytes = (1ULL << 16);
 };
 
 }  // namespace mm

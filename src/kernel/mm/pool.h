@@ -72,8 +72,10 @@ template <class T, class Index, template <class> class AllocatorBase>
 class Pool : public IndexPool<Index, AllocatorBase> {
  public:
   using IndexPoolType = IndexPool<Index, AllocatorBase>;
+  using TypeAllocator = AllocatorBase<T>;
 
-  Pool(T* buffer, const Index size) : IndexPoolType(size), buffer_(buffer) {}
+  Pool(const Index size)
+      : IndexPoolType(size), buffer_(TypeAllocator::Allocate(size)) {}
 
   T* Allocate() {
     T* ret_val = nullptr;

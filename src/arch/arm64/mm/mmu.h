@@ -38,19 +38,8 @@ class MMU {
    */
   void Enable();
 
-  /**
-   * @brief Set user space translation table
-   *
-   * @param address Table address
-   */
-  inline void SetUserTable(void* address);
-
-  /**
-   * @brief Set kernel space translation table
-   *
-   * @param address Table address
-   */
-  inline void SetKernelTable(void* address);
+  inline void SetLowerTable(void* address) { SetTTBR0(address); }
+  inline void SetHigherTable(void* address) { SetTTBR1(address); }
 
  private:
   /**
@@ -69,10 +58,6 @@ class MMU {
 
   tcr::TcrRegister tcr_;
 };
-
-inline void MMU::SetUserTable(void* address) { SetTTBR0(address); }
-
-inline void MMU::SetKernelTable(void* address) { SetTTBR1(address); }
 
 }  // namespace mm
 }  // namespace arm64

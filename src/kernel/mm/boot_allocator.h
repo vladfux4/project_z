@@ -17,6 +17,7 @@ GNU General Public License for more details.
 #ifndef KERNEL_MM_BOOT_ALLOCATOR_H_
 #define KERNEL_MM_BOOT_ALLOCATOR_H_
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 
@@ -29,7 +30,13 @@ template <class T>
 class BootAllocator {
  public:
   static T* Allocate(const size_t n = 1, const size_t alignment = 0) {
+    DDBG_LOG("boot_allocator alloc count: ", n);
     return reinterpret_cast<T*>(BootStack::Push((sizeof(T) * n), alignment));
+  }
+
+  static void Deallocate(T* item) {
+    (void)item;
+    assert(false);
   }
 };
 

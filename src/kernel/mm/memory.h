@@ -23,14 +23,23 @@ GNU General Public License for more details.
 #include "arch/arm64/mm/translation_table.h"
 #include "gen/arch_types_gen.h"
 #include "kernel/config.h"
+#include "kernel/mm/address_space.h"
 #include "kernel/mm/boot_allocator.h"
+#include "kernel/mm/pool.h"
 
 namespace kernel {
 namespace mm {
 
-/**
- * @brief The Memory Pool class
- */
+struct __attribute__((__packed__)) PageInfo {
+  bool value;
+};
+
+class MemoryPool : Pool<PageInfo, size_t, BootAllocator> {
+ public:
+  MemoryPool(const size_t length)
+      : Pool(length / PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes) {}
+};
+
 class Memory {
  public:
   Memory();
@@ -39,13 +48,12 @@ class Memory {
   void Init();
 
  private:
-  typedef arch::arm64::mm::TranslationTable<
-      KERNEL_PAGE_SIZE, KERNEL_ADDRESS_LENGTH, BootAllocator>
-      TranslationTable;
+  using TranslationTable = AddressSpace::TranslationTable;
 
   arch::mm::MMU mmu_;
-  TranslationTable p_table_;
-  TranslationTable v_table_;
+  AddressSpace p_space_;
+  AddressSpace v_space_;
+  MemoryPool* memory_pool_;
 };
 
 }  // namespace mm

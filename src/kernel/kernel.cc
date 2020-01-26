@@ -15,10 +15,12 @@ GNU General Public License for more details.
 
 =============================================================================*/
 #include "kernel/kernel.h"
-#include "kernel/logger.h"
 
 #include <stdint.h>
+
 #include <cstddef>
+
+#include "kernel/logger.h"
 
 /// dummy operators for c++ support
 extern "C" {
