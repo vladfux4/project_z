@@ -26,12 +26,17 @@ GNU General Public License for more details.
 namespace kernel {
 namespace mm {
 
-template <class T>
+template <class T, size_t kAlignment = 0>
 class BootAllocator {
  public:
-  static T* Allocate(const size_t n = 1, const size_t alignment = 0) {
+  static T* Allocate() {
+    DDBG_LOG("boot_allocator alloc");
+    return reinterpret_cast<T*>(BootStack::Push(sizeof(T), kAlignment));
+  }
+
+  static T* Allocate(const size_t n) {
     DDBG_LOG("boot_allocator alloc count: ", n);
-    return reinterpret_cast<T*>(BootStack::Push((sizeof(T) * n), alignment));
+    return reinterpret_cast<T*>(BootStack::Push((sizeof(T) * n), kAlignment));
   }
 
   static void Deallocate(T* item) {

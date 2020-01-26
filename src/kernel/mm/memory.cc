@@ -19,7 +19,9 @@ GNU General Public License for more details.
 namespace kernel {
 namespace mm {
 
-Memory::Memory() : mmu_(), p_space_(), v_space_(), memory_pool_(nullptr) {}
+PhysicalPagePool* PhysicalPagePool::ref_ = nullptr;
+
+Memory::Memory() : mmu_(), p_space_() {}
 
 Memory::~Memory() {}
 
@@ -63,20 +65,21 @@ void Memory::Init() {
 
   mmu_.SetLowerTable(p_space_.translation_table.GetBase());
 
-  size_t memory_size = (880 * (1ULL << 20));  // 880Mb of ram
-  DDBG_LOG("pool size: ", memory_size);
-  memory_pool_ = BootAllocator<MemoryPool>::Allocate();
-  new (memory_pool_) MemoryPool(memory_size);
+  mmu_.Enable();
 
-  v_space_.translation_table.Map(
+  PhysicalPagePool::Construct();
+
+  auto v_space = PhysicalPagePoolAllocator<
+      AddressSpace<PhysicalPagePoolAllocator>>::Allocate();
+  new (v_space) AddressSpace<PhysicalPagePoolAllocator>();
+
+  v_space->translation_table.Map(
       reinterpret_cast<void*>(0xFFFFFFFFFFE00000),
       reinterpret_cast<void*>(0x0000), TranslationTable::BlockSize::_4KB,
       {MemoryAttr::NORMAL, S2AP::NORMAL, SH::INNER_SHAREABLE, AF::IGNORE,
        Contiguous::OFF, XN::EXECUTE});
 
-  mmu_.SetHigherTable(v_space_.translation_table.GetBase());
-
-  mmu_.Enable();
+  mmu_.SetHigherTable(v_space->translation_table.GetBase());
 }
 
 }  // namespace mm

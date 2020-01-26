@@ -34,10 +34,73 @@ struct __attribute__((__packed__)) PageInfo {
   bool value;
 };
 
-class MemoryPool : Pool<PageInfo, size_t, BootAllocator> {
+class PagePool : public Pool<PageInfo, size_t, BootAllocator> {
  public:
-  MemoryPool(const size_t length)
+  PagePool(const size_t length)
       : Pool(length / PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes) {}
+};
+
+class PhysicalPagePool : public PagePool {
+ public:
+  static void Construct() {
+    static bool create = true;
+    if (create) {
+      size_t length = (880 * (1ULL << 20));  // 880Mb of ram
+      DDBG_LOG("pool size: ", length);
+      auto init_begin = BootStack::GetHead();
+      DDBG_LOG("pool init begin: ", reinterpret_cast<size_t>(init_begin));
+
+      ref_ = BootAllocator<PhysicalPagePool>::Allocate();
+      new (ref_) PhysicalPagePool(length);
+
+      auto begin = BootStack::Push(
+          1, PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes);  // allign address to
+                                                         // page size
+      DDBG_LOG("pool new begin: ", reinterpret_cast<size_t>(begin));
+      ref_->SetBeginAddress(begin);
+      /// TODO reduce pool length
+
+      create = false;
+    }
+  }
+
+  static PhysicalPagePool* Get() { return ref_; }
+
+  uint8_t* BeginAddress() { return begin_; }
+  void SetBeginAddress(uint8_t* address) { begin_ = address; }
+
+ private:
+  PhysicalPagePool(const size_t length) : PagePool(length), begin_(nullptr) {}
+
+  static PhysicalPagePool* ref_;
+
+  uint8_t* begin_;
+};
+
+// template <typename T, typename StaticPoolType>
+// struct PagePoolAdapter {
+//  static T* Allocate() {
+//    return StaticPoolType::Get()->Allocate();
+//  }
+
+//  static void Deallocate(T* item) { StaticPoolType::Get()->Deallocate(item); }
+//};
+
+template <typename T, size_t kAlignment = 0>
+struct PhysicalPagePoolAllocator {
+  static_assert(sizeof(T) <= PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes);
+
+  static T* Allocate() {
+    auto pool = PhysicalPagePool::Get();
+    auto info = pool->Allocate();
+    auto index = pool->ToIndex(info);
+    uint8_t* address = pool->BeginAddress() +
+                       (PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes * index);
+
+    DDBG_LOG("PhysicalPagePoolAllocator address: ",
+             reinterpret_cast<size_t>(address));
+    return reinterpret_cast<T*>(address);
+  }
 };
 
 class Memory {
@@ -48,12 +111,12 @@ class Memory {
   void Init();
 
  private:
-  using TranslationTable = AddressSpace::TranslationTable;
+  using TranslationTable = AddressSpace<BootAllocator>::TranslationTable;
+  using VirtualAddressSpace = AddressSpace<PhysicalPagePoolAllocator>;
 
   arch::mm::MMU mmu_;
-  AddressSpace p_space_;
-  AddressSpace v_space_;
-  MemoryPool* memory_pool_;
+  AddressSpace<BootAllocator> p_space_;
+  //  AddressSpace<BootAllocator> v_space_;
 };
 
 }  // namespace mm

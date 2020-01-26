@@ -153,13 +153,13 @@ class TranslationTableConfig<kernel::mm::PageSize::_4KB, kAddressLength> {
 };
 
 template <kernel::mm::PageSize kPageSize, std::size_t kAddressLength,
-          template <class> class AllocatorBase>
+          template <class, size_t> class AllocatorBase>
 class TranslationTable {
  public:
   using Config = TranslationTableConfig<kPageSize, kAddressLength>;
   using BlockSize = typename Config::BlockSize;
   using Table = typename Config::Table;
-  using Allocator = AllocatorBase<Table>;
+  using Allocator = AllocatorBase<Table, sizeof(Table)>;
 
   struct EntryParameters {
     MemoryAttr mem_attr;
@@ -259,7 +259,7 @@ class TranslationTable {
   }
 
   Table* MakeTable() {
-    Table* table = new (Allocator::Allocate(1, sizeof(Table))) Table();
+    Table* table = new (Allocator::Allocate()) Table();
     //    DDBG_LOG("New table ptr: ", reinterpret_cast<uint64_t>(table));
     return table;
   }

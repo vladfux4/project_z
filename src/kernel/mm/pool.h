@@ -17,10 +17,12 @@ GNU General Public License for more details.
 #ifndef KERNEL_MM_POOL_H_
 #define KERNEL_MM_POOL_H_
 
+#include <cstddef>
+
 namespace kernel {
 namespace mm {
 
-template <class Index, template <class> class AllocatorBase>
+template <class Index, template <class, size_t = 0> class AllocatorBase>
 class IndexPool {
  public:
   IndexPool(const Index size)
@@ -68,7 +70,8 @@ class IndexPool {
   IndexData* index_list_;
 };
 
-template <class T, class Index, template <class> class AllocatorBase>
+template <class T, class Index,
+          template <class, size_t = 0> class AllocatorBase>
 class Pool : public IndexPool<Index, AllocatorBase> {
  public:
   using IndexPoolType = IndexPool<Index, AllocatorBase>;
@@ -89,8 +92,10 @@ class Pool : public IndexPool<Index, AllocatorBase> {
 
   void Deallocate(const T* item) {
     Index index = (item - buffer_);
-    IndexPoolType::Deallocate(index);
+    IndexPoolType::Deallocate(ToIndex(item));
   }
+
+  Index ToIndex(const T* item) { return (item - buffer_); }
 
  private:
   T* buffer_;

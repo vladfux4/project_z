@@ -8,13 +8,14 @@
 namespace kernel {
 namespace mm {
 
+template <template <class, size_t> class AllocatorBase>
 class AddressSpace {
  public:
   AddressSpace() : translation_table() {}
 
   using TranslationTable =
       arch::arm64::mm::TranslationTable<KERNEL_PAGE_SIZE, KERNEL_ADDRESS_LENGTH,
-                                        BootAllocator>;
+                                        AllocatorBase>;
   TranslationTable translation_table;
 };
 

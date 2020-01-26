@@ -3,7 +3,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-template <typename T>
+template <typename T, std::size_t = 0>
 class Allocator {
  public:
   static T* Allocate(const size_t n = 1) {
