@@ -46,64 +46,65 @@ __attribute__((__noreturn__)) void __assert_func(const char*, int, const char*,
 }
 }
 
+void Function_1() {
+  static uint64_t a = 0;
+  a++;
+
+  uint64_t* v_ptr =
+      reinterpret_cast<uint64_t*>(0xFFFFFFFFFFE00050);  // mapped on 0x50
+  *v_ptr = a;
+}
+
+void Function_2() {
+  static uint64_t a = 0;
+  a++;
+
+  uint64_t* v_ptr =
+      reinterpret_cast<uint64_t*>(0xFFFFFFFFFFF00060);  // mapped on 0x50
+  *v_ptr = a;
+}
+
 namespace kernel {
 
 static uint8_t __attribute__((aligned(4096))) kernel_storage[sizeof(Kernel)];
 
-Kernel::Kernel() : memory_(), scheduler_() {}
+Kernel::Kernel() : memory_(), scheduler_(memory_) {}
 
 void Kernel::Routine() {
   Init();
-
-  //  auto v_space_1 = mm::Memory::VirtualAddressSpace();
-  auto v_space_1 = mm::UniquePointer<mm::Memory::VirtualAddressSpace,
-                                     mm::PhysicalPagePoolAllocator>::Make();
-  {
-    using namespace arch::arm64::mm;
-    v_space_1->translation_table.Map(
-        reinterpret_cast<void*>(0xFFFFFFFFFFE00000),
-        reinterpret_cast<void*>(0x0000),
-        mm::Memory::TranslationTable::BlockSize::_4KB,
-        {MemoryAttr::NORMAL, S2AP::NORMAL, SH::INNER_SHAREABLE, AF::IGNORE,
-         Contiguous::OFF, XN::EXECUTE});
-  }
-
-  auto v_space_2 = mm::Memory::VirtualAddressSpace();
-  {
-    using namespace arch::arm64::mm;
-    v_space_2.translation_table.Map(
-        reinterpret_cast<void*>(0xFFFFFFFFFFF00000),
-        reinterpret_cast<void*>(0x0000),
-        mm::Memory::TranslationTable::BlockSize::_4KB,
-        {MemoryAttr::NORMAL, S2AP::NORMAL, SH::INNER_SHAREABLE, AF::IGNORE,
-         Contiguous::OFF, XN::EXECUTE});
-  }
-
   Print("Init");
 
-  { auto process = scheduler_.CreateProcess(); }
+  using namespace arch::arm64::mm;
+
+  auto process_1 = scheduler_.CreateProcess();
+  process_1->space_->translation_table.Map(
+      reinterpret_cast<void*>(0xFFFFFFFFFFE00000),
+      reinterpret_cast<void*>(0x0000),
+      {mm::Memory::TranslationTable::BlockSize::_4KB, MemoryAttr::NORMAL,
+       S2AP::NORMAL, SH::INNER_SHAREABLE, AF::IGNORE, Contiguous::OFF,
+       XN::EXECUTE});
+  process_1->SetExec(Function_1);
+
+  auto process_2 = scheduler_.CreateProcess();
+  process_2->space_->translation_table.Map(
+      reinterpret_cast<void*>(0xFFFFFFFFFFF00000),
+      reinterpret_cast<void*>(0x0000),
+      {mm::Memory::TranslationTable::BlockSize::_4KB, MemoryAttr::NORMAL,
+       S2AP::NORMAL, SH::INNER_SHAREABLE, AF::IGNORE, Contiguous::OFF,
+       XN::EXECUTE});
+  process_2->SetExec(Function_2);
 
   // address translation test code
-  uint64_t* ptr = reinterpret_cast<uint64_t*>(0x40);
   while (true) {
     static uint64_t a = 0;
     a++;
+    uint64_t* ptr = reinterpret_cast<uint64_t*>(0x40);
     *ptr = a;
 
-    {
-      memory_.mmu_.SetHigherTable(v_space_1->translation_table.GetBase());
-      uint64_t* v_ptr =
-          reinterpret_cast<uint64_t*>(0xFFFFFFFFFFE00050);  // mapped on 0x50
-
-      *v_ptr = a;
-    }
-
-    {
-      memory_.mmu_.SetHigherTable(v_space_2.translation_table.GetBase());
-      uint64_t* v_ptr =
-          reinterpret_cast<uint64_t*>(0xFFFFFFFFFFF00060);  // mapped on 0x50
-      *v_ptr = a;
-    }
+    scheduler_.Select(*process_1);
+    process_1->Exec();
+    scheduler_.Select(*process_2);
+    process_2->Exec();
   }
 }
 

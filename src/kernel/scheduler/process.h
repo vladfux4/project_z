@@ -22,7 +22,6 @@ GNU General Public License for more details.
 
 #include "gen/arch_types_gen.h"
 #include "kernel/config.h"
-
 #include "kernel/mm/memory.h"
 #include "kernel/mm/unique_ptr.h"
 
@@ -31,13 +30,25 @@ namespace scheduler {
 
 class Process {
  public:
+  using Function = void (*)();
+
   Process(mm::UniquePointer<mm::Memory::VirtualAddressSpace,
                             mm::PhysicalAllocator>&& space)
-      : space_(std::move(space)) {}
+      : space_(std::move(space)), func_(nullptr) {}
   ~Process();
+
+  void Exec() {
+    if (func_ != nullptr) {
+      func_();
+    }
+  }
+
+  void SetExec(Function func) { func_ = func; }
 
   mm::UniquePointer<mm::Memory::VirtualAddressSpace, mm::PhysicalAllocator>
       space_;
+
+  Function func_;
 };
 
 }  // namespace scheduler

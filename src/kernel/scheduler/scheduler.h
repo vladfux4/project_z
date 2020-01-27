@@ -22,7 +22,6 @@ GNU General Public License for more details.
 
 #include "gen/arch_types_gen.h"
 #include "kernel/config.h"
-
 #include "kernel/mm/memory.h"
 #include "kernel/mm/unique_ptr.h"
 #include "kernel/scheduler/process.h"
@@ -32,7 +31,7 @@ namespace scheduler {
 
 class Scheduler {
  public:
-  //  Scheduler();
+  Scheduler(mm::Memory& memory) : memory_(memory) {}
   //  ~Scheduler();
 
   //  void Init(mm::Memory& memory);
@@ -45,7 +44,12 @@ class Scheduler {
         std::move(space));
   }
 
-  //  mm::Memory* memory_;
+  void Select(Process& process) {
+    memory_.mmu_.SetHigherTable(
+        process.space_.Get()->translation_table.GetBase());
+  }
+
+  mm::Memory& memory_;
 };
 
 }  // namespace scheduler

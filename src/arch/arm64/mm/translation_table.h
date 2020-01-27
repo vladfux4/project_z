@@ -162,6 +162,7 @@ class TranslationTable {
   using Allocator = AllocatorBase<Table, sizeof(Table)>;
 
   struct EntryParameters {
+    BlockSize size;
     MemoryAttr mem_attr;
     S2AP s2ap;
     SH sh;
@@ -177,10 +178,9 @@ class TranslationTable {
 
   void* GetBase() { return reinterpret_cast<void*>(root_table_); }
 
-  void Map(const void* v_ptr, const void* p_ptr, const BlockSize size,
-           const EntryParameters& param) {
-    auto chain_info = CreateTableChain(v_ptr, size);
-    CreateEntry(v_ptr, p_ptr, size, param, std::get<LookupLevel>(chain_info),
+  void Map(const void* v_ptr, const void* p_ptr, const EntryParameters& param) {
+    auto chain_info = CreateTableChain(v_ptr, param.size);
+    CreateEntry(v_ptr, p_ptr, param, std::get<LookupLevel>(chain_info),
                 std::get<Table*>(chain_info));
   }
 
@@ -220,12 +220,12 @@ class TranslationTable {
     return {table, it.Value()};
   }
 
-  void CreateEntry(const void* v_ptr, const void* p_ptr, const BlockSize size,
+  void CreateEntry(const void* v_ptr, const void* p_ptr,
                    const EntryParameters& param, const LookupLevel level,
                    Table* table) {
     uint64_t address = Config::CalcEntryAddress(p_ptr, level);
-    auto entry_type =
-        (Config::kMinBlockSize == size) ? EntryType::TABLE : EntryType::BLOCK;
+    auto entry_type = (Config::kMinBlockSize == param.size) ? EntryType::TABLE
+                                                            : EntryType::BLOCK;
     const auto index = Config::CalcIndex(v_ptr, level);
     auto& entry = table->at(index);
 

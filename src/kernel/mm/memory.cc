@@ -28,38 +28,40 @@ void Memory::Init() {
 
   size_t base = 0;
   // 880Mb of ram
-  for (; base < 440; base++) {  // 4440
+  for (; base < 440; base++) {
     void* address = reinterpret_cast<void*>(base << 21);
     p_space_.translation_table.Map(
-        address, address, TranslationTable::BlockSize::_2MB,
-        {MemoryAttr::NORMAL, S2AP::NORMAL, SH::INNER_SHAREABLE, AF::IGNORE,
-         Contiguous::OFF, XN::EXECUTE});
+        address, address,
+        {TranslationTable::BlockSize::_2MB, MemoryAttr::NORMAL, S2AP::NORMAL,
+         SH::INNER_SHAREABLE, AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
   }
 
   // VC ram up to 0x3F000000
   for (; base < 512 - 8; base++) {
     void* address = reinterpret_cast<void*>(base << 21);
     p_space_.translation_table.Map(
-        address, address, TranslationTable::BlockSize::_2MB,
-        {MemoryAttr::NORMAL_NC, S2AP::NORMAL, SH::NON_SHAREABLE, AF::IGNORE,
-         Contiguous::OFF, XN::EXECUTE});
+        address, address,
+        {TranslationTable::BlockSize::_2MB, MemoryAttr::NORMAL_NC, S2AP::NORMAL,
+         SH::NON_SHAREABLE, AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
   }
 
   // 16 MB peripherals at 0x3F000000 - 0x40000000
   for (; base < 512; base++) {
     void* address = reinterpret_cast<void*>(base << 21);
     p_space_.translation_table.Map(
-        address, address, TranslationTable::BlockSize::_2MB,
-        {MemoryAttr::DEVICE_NGNRNE, S2AP::NORMAL, SH::NON_SHAREABLE, AF::IGNORE,
-         Contiguous::OFF, XN::EXECUTE});
+        address, address,
+        {TranslationTable::BlockSize::_2MB, MemoryAttr::DEVICE_NGNRNE,
+         S2AP::NORMAL, SH::NON_SHAREABLE, AF::IGNORE, Contiguous::OFF,
+         XN::EXECUTE});
   }
 
   // 2 MB for mailboxes at 0x40000000
   void* address = reinterpret_cast<void*>(base << 21);
   p_space_.translation_table.Map(
-      address, address, TranslationTable::BlockSize::_2MB,
-      {MemoryAttr::DEVICE_NGNRNE, S2AP::NORMAL, SH::NON_SHAREABLE, AF::IGNORE,
-       Contiguous::OFF, XN::EXECUTE});
+      address, address,
+      {TranslationTable::BlockSize::_2MB, MemoryAttr::DEVICE_NGNRNE,
+       S2AP::NORMAL, SH::NON_SHAREABLE, AF::IGNORE, Contiguous::OFF,
+       XN::EXECUTE});
 
   mmu_.SetLowerTable(p_space_.translation_table.GetBase());
 
