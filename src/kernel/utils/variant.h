@@ -9,7 +9,7 @@ namespace utils {
 
 template <typename DefaultType, typename... Args>
 struct Variant {
-  static constexpr auto kMaxSize = sizeof(std::max({sizeof(Args)...}));
+  static constexpr auto kMaxSize = std::max({sizeof(Args)...});
 
   template <typename T>
   using is_in_variant = std::disjunction<std::is_same<T, Args>...>;

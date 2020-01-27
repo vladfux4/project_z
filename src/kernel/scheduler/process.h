@@ -14,15 +14,33 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#include "kernel/mm/page_registry.h"
+#ifndef KERNEL_SCHEDULER_PROCESS_H_
+#define KERNEL_SCHEDULER_PROCESS_H_
+
+#include <cstddef>
+#include <cstdint>
+
+#include "gen/arch_types_gen.h"
+#include "kernel/config.h"
+
+#include "kernel/mm/memory.h"
+#include "kernel/mm/unique_ptr.h"
 
 namespace kernel {
-namespace mm {
+namespace scheduler {
 
-PageRegistry::PageRegistry(const uint8_t* begin, const uint8_t* end) {
-  (void)begin;
-  (void)end;
-}
+class Process {
+ public:
+  Process(mm::UniquePointer<mm::Memory::VirtualAddressSpace,
+                            mm::PhysicalAllocator>&& space)
+      : space_(std::move(space)) {}
+  ~Process();
 
-}  // namespace mm
+  mm::UniquePointer<mm::Memory::VirtualAddressSpace, mm::PhysicalAllocator>
+      space_;
+};
+
+}  // namespace scheduler
 }  // namespace kernel
+
+#endif  // KERNEL_SCHEDULER_PROCESS_H_

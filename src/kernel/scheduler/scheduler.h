@@ -14,40 +14,41 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef KERNEL_MM_MEMORY_H_
-#define KERNEL_MM_MEMORY_H_
+#ifndef KERNEL_SCHEDULER_SCHEDULER_H_
+#define KERNEL_SCHEDULER_SCHEDULER_H_
 
 #include <cstddef>
 #include <cstdint>
 
-#include "arch/arm64/mm/translation_table.h"
 #include "gen/arch_types_gen.h"
 #include "kernel/config.h"
-#include "kernel/mm/address_space.h"
-#include "kernel/mm/boot_allocator.h"
-#include "kernel/mm/physical_allocator.h"
+
+#include "kernel/mm/memory.h"
+#include "kernel/mm/unique_ptr.h"
+#include "kernel/scheduler/process.h"
 
 namespace kernel {
-namespace mm {
+namespace scheduler {
 
-class Memory {
+class Scheduler {
  public:
-  Memory();
-  ~Memory();
+  //  Scheduler();
+  //  ~Scheduler();
 
-  void Init();
+  //  void Init(mm::Memory& memory);
 
-  // private:
-  using PhysicalAddressSpace = AddressSpace<BootAllocator>;
-  using VirtualAddressSpace = AddressSpace<PhysicalAllocator>;
+  mm::UniquePointer<Process, mm::PhysicalAllocator> CreateProcess() {
+    auto space = mm::UniquePointer<mm::Memory::VirtualAddressSpace,
+                                   mm::PhysicalAllocator>::Make();
 
-  using TranslationTable = PhysicalAddressSpace::TranslationTable;
+    return mm::UniquePointer<Process, mm::PhysicalAllocator>::Make(
+        std::move(space));
+  }
 
-  arch::mm::MMU mmu_;
-  PhysicalAddressSpace p_space_;
+  //  mm::Memory* memory_;
 };
 
-}  // namespace mm
+}  // namespace scheduler
 }  // namespace kernel
 
-#endif  // KERNEL_MM_MEMORY_H_
+#endif  // KERNEL_SCHEDULER_SCHEDULER_H_

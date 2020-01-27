@@ -18,6 +18,7 @@ GNU General Public License for more details.
 #define KERNEL_KERNEL_H_
 
 #include "kernel/mm/memory.h"
+#include "kernel/scheduler/scheduler.h"
 
 namespace kernel {
 
@@ -48,6 +49,7 @@ class Kernel {
   void Init();
 
   mm::Memory memory_;
+  scheduler::Scheduler scheduler_;
 };
 
 }  // namespace kernel

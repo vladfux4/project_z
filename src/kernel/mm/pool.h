@@ -26,9 +26,9 @@ template <class Index, template <class, size_t = 0> class AllocatorBase>
 class IndexPool {
  public:
   IndexPool(const Index size)
-      : kSize(size), head_(0), free_items_(size), index_list_(nullptr) {
-    index_list_ = IndexAllocator::Allocate(kSize);
-    for (Index i = 0; i < kSize; ++i) {
+      : size_(size), head_(0), free_items_(size), index_list_(nullptr) {
+    index_list_ = IndexAllocator::Allocate(size_);
+    for (Index i = 0; i < size_; ++i) {
       index_list_[i].next = (i + 1);
     }
   }
@@ -52,7 +52,14 @@ class IndexPool {
     free_items_++;
   }
 
-  Index Size() const { return kSize; }
+  void Cut(const Index size) {
+    if ((size < size_) && (free_items_ == size_)) {
+      size_ = size;
+      free_items_ = size;
+    }
+  }
+
+  Index Size() const { return size_; }
   Index FreeItems() const { return free_items_; }
 
   static constexpr Index kNoIndex = static_cast<Index>(-1);
@@ -64,7 +71,7 @@ class IndexPool {
 
   using IndexAllocator = AllocatorBase<IndexData>;
 
-  const Index kSize;
+  Index size_;
   Index head_;
   Index free_items_;
   IndexData* index_list_;
@@ -88,6 +95,12 @@ class Pool : public IndexPool<Index, AllocatorBase> {
     }
 
     return ret_val;
+  }
+
+  Index AllocateByIndex() { return IndexPoolType::Allocate(); }
+
+  void DeallocateByIndex(const Index index) {
+    IndexPoolType::Deallocate(index);
   }
 
   void Deallocate(const T* item) {

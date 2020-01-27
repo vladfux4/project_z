@@ -21,6 +21,7 @@ GNU General Public License for more details.
 #include <cstddef>
 
 #include "kernel/logger.h"
+#include "kernel/mm/unique_ptr.h"
 
 /// dummy operators for c++ support
 extern "C" {
@@ -49,22 +50,60 @@ namespace kernel {
 
 static uint8_t __attribute__((aligned(4096))) kernel_storage[sizeof(Kernel)];
 
-Kernel::Kernel() : memory_() {}
+Kernel::Kernel() : memory_(), scheduler_() {}
 
 void Kernel::Routine() {
   Init();
+
+  //  auto v_space_1 = mm::Memory::VirtualAddressSpace();
+  auto v_space_1 = mm::UniquePointer<mm::Memory::VirtualAddressSpace,
+                                     mm::PhysicalPagePoolAllocator>::Make();
+  {
+    using namespace arch::arm64::mm;
+    v_space_1->translation_table.Map(
+        reinterpret_cast<void*>(0xFFFFFFFFFFE00000),
+        reinterpret_cast<void*>(0x0000),
+        mm::Memory::TranslationTable::BlockSize::_4KB,
+        {MemoryAttr::NORMAL, S2AP::NORMAL, SH::INNER_SHAREABLE, AF::IGNORE,
+         Contiguous::OFF, XN::EXECUTE});
+  }
+
+  auto v_space_2 = mm::Memory::VirtualAddressSpace();
+  {
+    using namespace arch::arm64::mm;
+    v_space_2.translation_table.Map(
+        reinterpret_cast<void*>(0xFFFFFFFFFFF00000),
+        reinterpret_cast<void*>(0x0000),
+        mm::Memory::TranslationTable::BlockSize::_4KB,
+        {MemoryAttr::NORMAL, S2AP::NORMAL, SH::INNER_SHAREABLE, AF::IGNORE,
+         Contiguous::OFF, XN::EXECUTE});
+  }
+
   Print("Init");
+
+  { auto process = scheduler_.CreateProcess(); }
 
   // address translation test code
   uint64_t* ptr = reinterpret_cast<uint64_t*>(0x40);
-  uint64_t* v_ptr =
-      reinterpret_cast<uint64_t*>(0xFFFFFFFFFFE00050);  // mapped on 0x50
   while (true) {
     static uint64_t a = 0;
     a++;
     *ptr = a;
-    *v_ptr = a;
-    //    Print("Test");
+
+    {
+      memory_.mmu_.SetHigherTable(v_space_1->translation_table.GetBase());
+      uint64_t* v_ptr =
+          reinterpret_cast<uint64_t*>(0xFFFFFFFFFFE00050);  // mapped on 0x50
+
+      *v_ptr = a;
+    }
+
+    {
+      memory_.mmu_.SetHigherTable(v_space_2.translation_table.GetBase());
+      uint64_t* v_ptr =
+          reinterpret_cast<uint64_t*>(0xFFFFFFFFFFF00060);  // mapped on 0x50
+      *v_ptr = a;
+    }
   }
 }
 

@@ -19,8 +19,6 @@ GNU General Public License for more details.
 namespace kernel {
 namespace mm {
 
-PhysicalPagePool* PhysicalPagePool::ref_ = nullptr;
-
 Memory::Memory() : mmu_(), p_space_() {}
 
 Memory::~Memory() {}
@@ -67,19 +65,27 @@ void Memory::Init() {
 
   mmu_.Enable();
 
-  PhysicalPagePool::Construct();
+  auto init_begin = BootStack::GetHead();
+  DDBG_LOG("pool init begin: ", reinterpret_cast<size_t>(init_begin));
 
-  auto v_space = PhysicalPagePoolAllocator<
-      AddressSpace<PhysicalPagePoolAllocator>>::Allocate();
-  new (v_space) AddressSpace<PhysicalPagePoolAllocator>();
+  size_t length = (880 * (1ULL << 20));  // 880Mb of ram
+  // minus kernel data and boot stack size
+  length = length - reinterpret_cast<size_t>(init_begin);
+  DDBG_LOG("pool size: ", length);
 
-  v_space->translation_table.Map(
-      reinterpret_cast<void*>(0xFFFFFFFFFFE00000),
-      reinterpret_cast<void*>(0x0000), TranslationTable::BlockSize::_4KB,
-      {MemoryAttr::NORMAL, S2AP::NORMAL, SH::INNER_SHAREABLE, AF::IGNORE,
-       Contiguous::OFF, XN::EXECUTE});
+  PhysicalPagePool::Construct(length);
 
-  mmu_.SetHigherTable(v_space->translation_table.GetBase());
+  // allign the stack end to page size
+  auto begin = BootStack::Push(1, PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes);
+
+  DDBG_LOG("pool new begin: ", reinterpret_cast<size_t>(begin));
+  PhysicalPagePool::Get()->SetBeginAddress(begin);
+
+  // minus new boot stack after pool allocation
+  length = length - (reinterpret_cast<size_t>(begin) -
+                     reinterpret_cast<size_t>(init_begin));
+  DDBG_LOG("pool new size: ", length);
+  PhysicalPagePool::Get()->Cut(length);
 }
 
 }  // namespace mm

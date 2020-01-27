@@ -14,36 +14,12 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef KERNEL_MM_PAGE_MAP_
-#define KERNEL_MM_PAGE_MAP_
-
-#include <stdint.h>
-
-#include <cstddef>
-
-#include "kernel/config.h"
-#include "kernel/mm/pool.h"
+#include "kernel/mm/page_pool.h"
 
 namespace kernel {
 namespace mm {
 
-struct Page {
-  uint8_t data;
-};
-
-/**
- * @brief The Page registry class
- */
-class PageRegistry {
- public:
-  PageRegistry(const uint8_t* begin, const uint8_t* end);
-
- private:
-  //  typedef Pool<Page, size_t, Boo> PagePool;
-  //  PagePool* page_pool_;
-};
+PhysicalPagePool* PhysicalPagePool::ref_ = nullptr;
 
 }  // namespace mm
 }  // namespace kernel
-
-#endif  // KERNEL_MM_PAGE_MAP_

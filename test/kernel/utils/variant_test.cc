@@ -5,14 +5,14 @@
 
 namespace utils {
 
-struct Foo {
+struct __attribute__((__packed__)) Foo {
   uint8_t a;
   uint8_t b;
 
   bool operator==(const Foo& obj) const { return (a == obj.a && b == obj.b); }
 };
 
-struct Bar {
+struct __attribute__((__packed__)) Bar {
   uint32_t a;
   uint16_t b;
 
