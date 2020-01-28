@@ -77,21 +77,11 @@ void Kernel::Routine() {
   using namespace arch::arm64::mm;
 
   auto process_1 = scheduler_.CreateProcess();
-  process_1->space_->translation_table.Map(
-      reinterpret_cast<void*>(0xFFFFFFFFFFE00000),
-      reinterpret_cast<void*>(0x0000),
-      {mm::Memory::TranslationTable::BlockSize::_4KB, MemoryAttr::NORMAL,
-       S2AP::NORMAL, SH::INNER_SHAREABLE, AF::IGNORE, Contiguous::OFF,
-       XN::EXECUTE});
+  process_1->space_->MapNewPage(reinterpret_cast<void*>(0xFFFFFFFFFFE00000));
   process_1->SetExec(Function_1);
 
   auto process_2 = scheduler_.CreateProcess();
-  process_2->space_->translation_table.Map(
-      reinterpret_cast<void*>(0xFFFFFFFFFFF00000),
-      reinterpret_cast<void*>(0x0000),
-      {mm::Memory::TranslationTable::BlockSize::_4KB, MemoryAttr::NORMAL,
-       S2AP::NORMAL, SH::INNER_SHAREABLE, AF::IGNORE, Contiguous::OFF,
-       XN::EXECUTE});
+  process_2->space_->MapNewPage(reinterpret_cast<void*>(0xFFFFFFFFFFF00000));
   process_2->SetExec(Function_2);
 
   // address translation test code

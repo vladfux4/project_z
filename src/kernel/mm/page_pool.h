@@ -62,7 +62,7 @@ class PhysicalPagePool : public PagePool {
   uint8_t* begin_;
 };
 
-template <typename T, size_t kAlignment>
+template <typename T, size_t kAlignment = 0>
 struct PhysicalPagePoolAllocator {
   static_assert(sizeof(T) <= PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes);
 
