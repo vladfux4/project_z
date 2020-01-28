@@ -72,7 +72,7 @@ Kernel::Kernel() : memory_(), scheduler_(memory_) {}
 
 void Kernel::Routine() {
   Init();
-  Print("Init");
+  LOG(VERBOSE) << "Init";
 
   using namespace arch::arm64::mm;
 
@@ -101,7 +101,7 @@ void Kernel::Routine() {
 Kernel::~Kernel() {}
 
 void Kernel::Init() {
-  InitPrint();
+  log::InitPrint();
   memory_.Init();
 }
 

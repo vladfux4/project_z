@@ -30,12 +30,12 @@ template <class T, size_t kAlignment = 0>
 class BootAllocator {
  public:
   static T* Allocate() {
-    DDBG_LOG("boot_allocator alloc");
+    LOG(VERBOSE) << "boot_allocator alloc";
     return reinterpret_cast<T*>(BootStack::Push(sizeof(T), kAlignment));
   }
 
   static T* Allocate(const size_t n) {
-    DDBG_LOG("boot_allocator alloc count: ", n);
+    LOG(VERBOSE) << "boot_allocator alloc count" << n;
     return reinterpret_cast<T*>(BootStack::Push((sizeof(T) * n), kAlignment));
   }
 

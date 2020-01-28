@@ -172,7 +172,7 @@ class TranslationTable {
   };
 
   TranslationTable() : root_table_(nullptr) {
-    DDBG_LOG("Constructor");
+    LOG(VERBOSE) << "Constructor";
     root_table_ = MakeTable();
   }
 

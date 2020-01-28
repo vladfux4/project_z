@@ -68,25 +68,25 @@ void Memory::Init() {
   mmu_.Enable();
 
   auto init_begin = BootStack::GetHead();
-  DDBG_LOG("pool init begin: ", reinterpret_cast<size_t>(init_begin));
+  LOG(VERBOSE) << "pool init begin: " << init_begin;
 
   size_t length = (880 * (1ULL << 20));  // 880Mb of ram
   // minus kernel data and boot stack size
   length = length - reinterpret_cast<size_t>(init_begin);
-  DDBG_LOG("pool size: ", length);
+  LOG(VERBOSE) << "pool size: " << length;
 
   PhysicalPagePool::Construct(length);
 
   // allign the stack end to page size
   auto begin = BootStack::Push(1, PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes);
 
-  DDBG_LOG("pool new begin: ", reinterpret_cast<size_t>(begin));
+  LOG(VERBOSE) << "pool new begin: " << begin;
   PhysicalPagePool::Get()->SetBeginAddress(begin);
 
   // minus new boot stack after pool allocation
   length = length - (reinterpret_cast<size_t>(begin) -
                      reinterpret_cast<size_t>(init_begin));
-  DDBG_LOG("pool new size: ", length);
+  LOG(VERBOSE) << "pool new size: " << length;
   PhysicalPagePool::Get()->Cut(length);
 }
 

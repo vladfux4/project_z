@@ -37,8 +37,7 @@ class BootStack {
     uint8_t* ret_val = head_;
     head_ += bytes;
 
-    DDBG_LOG("boot_stack alloc size: ", bytes);
-    DDBG_LOG("boot_stack ptr: ", reinterpret_cast<uint64_t>(ret_val));
+    LOG(VERBOSE) << "boot_stack alloc ptr:" << ret_val << " size:" << bytes;
     return ret_val;
   }
 

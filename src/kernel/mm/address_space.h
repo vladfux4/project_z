@@ -24,7 +24,7 @@ class AddressSpace {
   void MapNewPage(const void* address) {
     using namespace arch::arm64::mm;
     auto page = PhysicalPagePoolAllocator<Page>::Allocate();
-    DDBG_LOG("mape page by address: ", reinterpret_cast<size_t>(page));
+    LOG(VERBOSE) << "map page by address: " << page;
 
     translation_table.Map(
         address, reinterpret_cast<void*>(page),

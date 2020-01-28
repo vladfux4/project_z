@@ -14,6 +14,8 @@ set(CMAKE_OBJCOPY aarch64-elf-objcopy)
 #set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 #set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
+string(LENGTH "${CMAKE_SOURCE_DIR}/src/" SOURCE_PATH_SIZE)
+
 set(CMAKE_C_FLAGS "${PLATFORM_C_FLAGS} -g -Wall -nostdlib -ffreestanding -fdata-sections -ffunction-sections")
-set(CMAKE_CXX_FLAGS "${PLATFORM_CXX_FLAGS} -W -Wall -Wextra -g -std=c++17 -ffreestanding -nodefaultlibs -nostdlib -fno-exceptions -fno-rtti -fno-common -fno-builtin -fdata-sections -ffunction-sections")
+set(CMAKE_CXX_FLAGS "${PLATFORM_CXX_FLAGS} -W -Wall -Wextra -g -std=c++17 -ffreestanding -nodefaultlibs -nostdlib -fno-exceptions -fno-rtti -fno-common -fno-builtin -fdata-sections -ffunction-sections -DSOURCE_PATH_SIZE=${SOURCE_PATH_SIZE}")
 SET(CMAKE_ASM_FLAGS "${PLATFORM_C_FLAGS} -g")

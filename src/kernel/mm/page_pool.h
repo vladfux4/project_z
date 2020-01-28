@@ -73,23 +73,18 @@ struct PhysicalPagePoolAllocator {
     uint8_t* address = pool->BeginAddress() +
                        (PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes * index);
 
-    DDBG_LOG("PhysicalPagePoolAllocator alloc index: ",
-             reinterpret_cast<size_t>(index));
-    DDBG_LOG("PhysicalPagePoolAllocator alloc address: ",
-             reinterpret_cast<size_t>(address));
+    LOG(VERBOSE) << "PhysicalPage alloc index: " << index
+                 << " address:" << address;
     return reinterpret_cast<T*>(address);
   }
 
   static void Deallocate(T* address) {
     auto pool = PhysicalPagePool::Get();
-
-    DDBG_LOG("PhysicalPagePoolAllocator dealloc address: ",
-             reinterpret_cast<size_t>(address));
     auto index = ((reinterpret_cast<uint8_t*>(address) - pool->BeginAddress()) /
                   PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes);
-    DDBG_LOG("PhysicalPagePoolAllocator dealloc index: ",
-             reinterpret_cast<size_t>(index));
 
+    LOG(VERBOSE) << "PhysicalPage dealloc index: " << index
+                 << " address:" << address;
     pool->DeallocateByIndex(index);
   }
 };
