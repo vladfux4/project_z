@@ -72,30 +72,42 @@ Kernel::Kernel() : memory_(), scheduler_(memory_) {}
 
 void Kernel::Routine() {
   Init();
-  LOG(VERBOSE) << "Init";
+  LOG(INFO) << "Hello";
+  LOG(INFO) << "Free pages: "
+            << static_cast<size_t>(
+                   kernel::mm::PhysicalPagePool::Get()->FreeItems());
+  {
+    auto process_1 = scheduler_.CreateProcess();
+    process_1->AddressSpace().MapNewPage(
+        reinterpret_cast<void*>(0xFFFFFFFFFFE00000));
+    process_1->SetExec(Function_1);
 
-  using namespace arch::arm64::mm;
+    auto process_2 = scheduler_.CreateProcess();
+    process_2->AddressSpace().MapNewPage(
+        reinterpret_cast<void*>(0xFFFFFFFFFFF00000));
+    process_2->SetExec(Function_2);
 
-  auto process_1 = scheduler_.CreateProcess();
-  process_1->space_->MapNewPage(reinterpret_cast<void*>(0xFFFFFFFFFFE00000));
-  process_1->SetExec(Function_1);
+    // address translation test code
+    while (true) {
+      static uint64_t a = 0;
+      a++;
+      uint64_t* ptr = reinterpret_cast<uint64_t*>(0x40);
+      *ptr = a;
 
-  auto process_2 = scheduler_.CreateProcess();
-  process_2->space_->MapNewPage(reinterpret_cast<void*>(0xFFFFFFFFFFF00000));
-  process_2->SetExec(Function_2);
+      scheduler_.Select(*process_1);
+      process_1->Exec();
+      scheduler_.Select(*process_2);
+      process_2->Exec();
 
-  // address translation test code
-  while (true) {
-    static uint64_t a = 0;
-    a++;
-    uint64_t* ptr = reinterpret_cast<uint64_t*>(0x40);
-    *ptr = a;
-
-    scheduler_.Select(*process_1);
-    process_1->Exec();
-    scheduler_.Select(*process_2);
-    process_2->Exec();
+      if (a == 0xFF) {
+        break;
+      }
+    }
   }
+
+  LOG(INFO) << "Free pages: "
+            << static_cast<size_t>(
+                   kernel::mm::PhysicalPagePool::Get()->FreeItems());
 }
 
 Kernel::~Kernel() {}

@@ -20,6 +20,7 @@ GNU General Public License for more details.
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 
 #include "kernel/mm/boot_stack.h"
 
@@ -42,6 +43,11 @@ class BootAllocator {
   static void Deallocate(T* item) {
     (void)item;
     assert(false);
+  }
+
+  template <typename... Args>
+  static T* Make(Args&&... args) {
+    return new (BootAllocator::Allocate()) T(std::forward<Args>(args)...);
   }
 };
 

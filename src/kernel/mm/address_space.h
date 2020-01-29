@@ -4,8 +4,7 @@
 #include "arch/arm64/mm/translation_table.h"
 #include "kernel/config.h"
 #include "kernel/logger.h"
-#include "kernel/mm/boot_allocator.h"
-#include "kernel/mm/page_pool.h"
+#include "kernel/mm/physical_allocator.h"
 
 namespace kernel {
 namespace mm {
@@ -13,18 +12,15 @@ namespace mm {
 template <template <class, size_t> class AllocatorBase>
 class AddressSpace {
  public:
-  AddressSpace() : translation_table() {}
-
+  using PageType = kernel::mm::Page<KERNEL_PAGE_SIZE>;
   using TranslationTable =
       arch::arm64::mm::TranslationTable<KERNEL_PAGE_SIZE, KERNEL_ADDRESS_LENGTH,
                                         AllocatorBase>;
 
-  using Page = uint8_t[PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes];
-
   void MapNewPage(const void* address) {
     using namespace arch::arm64::mm;
-    auto page = PhysicalPagePoolAllocator<Page>::Allocate();
-    LOG(VERBOSE) << "map page by address: " << page;
+    auto page = PhysicalAllocator<PageType>::Allocate();
+    LOG(DEBUG) << "map page by address: " << page;
 
     translation_table.Map(
         address, reinterpret_cast<void*>(page),

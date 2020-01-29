@@ -26,7 +26,7 @@ namespace kernel {
 namespace mm {
 
 template <typename T, size_t kAlignment>
-struct SlabAllocator {  /// TODO Implement slab mechanism
+struct PhysicalSlabAllocator {  /// TODO Implement slab mechanism
   using PagePoolAllocator = PhysicalPagePoolAllocator<T, kAlignment>;
   static T* Allocate() { return PagePoolAllocator::Allocate(); }
   static void Deallocate(T* address) { PagePoolAllocator::Deallocate(address); }
@@ -35,7 +35,7 @@ struct SlabAllocator {  /// TODO Implement slab mechanism
 template <typename T, typename Spec = void>
 struct AllocatorSelector {
   template <typename ValueType, size_t kValueAlignment>
-  using Type = SlabAllocator<ValueType, kValueAlignment>;
+  using Type = PhysicalSlabAllocator<ValueType, kValueAlignment>;
 };
 
 template <typename T>
@@ -48,6 +48,10 @@ struct AllocatorSelector<
 
 template <typename T, size_t kAlignment = 0>
 struct PhysicalAllocator : AllocatorSelector<T>::template Type<T, kAlignment> {
+  template <typename... Args>
+  static T* Make(Args&&... args) {
+    return new (PhysicalAllocator::Allocate()) T(std::forward<Args>(args)...);
+  }
 };
 
 }  // namespace mm

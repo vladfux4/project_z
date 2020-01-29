@@ -25,6 +25,7 @@ Memory::~Memory() {}
 
 void Memory::Init() {
   using namespace arch::arm64::mm;
+  using TranslationTable = AddressSpace<BootAllocator>::TranslationTable;
 
   size_t base = 0;
   // 880Mb of ram
@@ -68,26 +69,36 @@ void Memory::Init() {
   mmu_.Enable();
 
   auto init_begin = BootStack::GetHead();
-  LOG(VERBOSE) << "pool init begin: " << init_begin;
+  LOG(DEBUG) << "pool init begin: " << init_begin;
 
   size_t length = (880 * (1ULL << 20));  // 880Mb of ram
   // minus kernel data and boot stack size
   length = length - reinterpret_cast<size_t>(init_begin);
-  LOG(VERBOSE) << "pool size: " << length;
+  LOG(DEBUG) << "pool size: " << length;
 
   PhysicalPagePool::Construct(length);
 
   // allign the stack end to page size
   auto begin = BootStack::Push(1, PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes);
 
-  LOG(VERBOSE) << "pool new begin: " << begin;
+  LOG(DEBUG) << "pool new begin: " << begin;
   PhysicalPagePool::Get()->SetBeginAddress(begin);
 
   // minus new boot stack after pool allocation
   length = length - (reinterpret_cast<size_t>(begin) -
                      reinterpret_cast<size_t>(init_begin));
-  LOG(VERBOSE) << "pool new size: " << length;
-  PhysicalPagePool::Get()->Cut(length);
+  LOG(DEBUG) << "pool new size: " << length;
+  PhysicalPagePool::Get()->CutBytes(length);
+}
+
+void Memory::Select(Memory::VirtualAddressSpace& space) {
+  mmu_.SetHigherTable(space.translation_table.GetBase());
+}
+
+mm::UniquePointer<Memory::VirtualAddressSpace, PhysicalAllocator>
+Memory::CreateVirtualAddressSpace() {
+  return mm::UniquePointer<mm::Memory::VirtualAddressSpace,
+                           mm::PhysicalAllocator>::Make();
 }
 
 }  // namespace mm

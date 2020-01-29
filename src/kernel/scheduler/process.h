@@ -35,7 +35,6 @@ class Process {
   Process(mm::UniquePointer<mm::Memory::VirtualAddressSpace,
                             mm::PhysicalAllocator>&& space)
       : space_(std::move(space)), func_(nullptr) {}
-  ~Process();
 
   void Exec() {
     if (func_ != nullptr) {
@@ -45,6 +44,9 @@ class Process {
 
   void SetExec(Function func) { func_ = func; }
 
+  mm::Memory::VirtualAddressSpace& AddressSpace() { return *space_; }
+
+ private:
   mm::UniquePointer<mm::Memory::VirtualAddressSpace, mm::PhysicalAllocator>
       space_;
 

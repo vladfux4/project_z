@@ -18,6 +18,7 @@ GNU General Public License for more details.
 #define KERNEL_TYPES_H_
 
 #include <cstddef>
+#include <cstdint>
 
 namespace kernel {
 namespace mm {
@@ -49,7 +50,30 @@ struct PageSizeInfo<PageSize::_64KB> {
   static constexpr size_t in_bytes = (1ULL << 16);
 };
 
+template <PageSize kPageSize>
+class Page {
+ private:
+  uint8_t data[PageSizeInfo<kPageSize>::in_bytes];
+};
+
+static_assert(sizeof(Page<kernel::mm::PageSize::_4KB>) ==
+                  PageSizeInfo<kernel::mm::PageSize::_4KB>::in_bytes,
+              "Wrong Page size");
+
+static_assert(sizeof(Page<kernel::mm::PageSize::_16KB>) ==
+                  PageSizeInfo<kernel::mm::PageSize::_16KB>::in_bytes,
+              "Wrong Page size");
+
+static_assert(sizeof(Page<kernel::mm::PageSize::_64KB>) ==
+                  PageSizeInfo<kernel::mm::PageSize::_64KB>::in_bytes,
+              "Wrong Page size");
+
 }  // namespace mm
 }  // namespace kernel
+
+template <typename Type, typename Container>
+decltype(Container().template Get<Type>()) Get(Container& container) {
+  return container.template Get<Type>();
+}
 
 #endif  // KERNEL_TYPES_H_

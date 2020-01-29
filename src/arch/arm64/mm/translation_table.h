@@ -63,6 +63,7 @@ template <kernel::mm::PageSize kPageSize>
 struct DescriptorTable {
  public:
   using TableItem = TableDescriptor<kPageSize>;
+  static constexpr size_t kEntryCount = TableEntryCount<kPageSize>::value;
 
   template <TableLvl kLevel>
   using EntryItem = EntryDescriptor<kPageSize, kLevel>;
@@ -72,8 +73,51 @@ struct DescriptorTable {
 
   Item& at(const size_t i) { return data[i]; }
 
+  class Iterator {
+   public:
+    Iterator(Item* buffer, size_t index) : buffer_(buffer), index_(index) {}
+
+    Item* operator->() const { return &buffer_[index_]; }
+    Item& operator*() const { return buffer_[index_]; }
+    bool operator!=(const Iterator& it) const {
+      return (it.buffer_ != buffer_) || (it.index_ != index_);
+    }
+
+    Iterator& operator++(int) {
+      for (auto i = (index_ + 1); i < kEntryCount; i++) {
+        if (Get<typename TableItem::EntryType>(Get<TableItem>(buffer_[i])) !=
+            EntryType::INVALID) {
+          index_ = i;
+          return *this;
+        }
+      }
+
+      index_ = kEndIndex;
+      return *this;
+    }
+
+    static constexpr size_t kEndIndex = static_cast<size_t>(-1);
+
+   private:
+    Item* buffer_;
+    size_t index_;
+  };
+
+  Iterator Begin() {
+    for (size_t i = 0; i < kEntryCount; i++) {
+      auto type = Get<typename TableItem::EntryType>(Get<TableItem>(data[i]));
+      if (type != EntryType::INVALID) {
+        return Iterator(data, i);
+      }
+    }
+
+    return End();
+  }
+
+  Iterator End() { return Iterator(data, Iterator::kEndIndex); }
+
  private:
-  Item data[TableEntryCount<kPageSize>::value];
+  Item data[kEntryCount];
 };
 
 static_assert(sizeof(DescriptorTable<kernel::mm::PageSize::_4KB>) == (512 * 8),
@@ -159,7 +203,9 @@ class TranslationTable {
   using Config = TranslationTableConfig<kPageSize, kAddressLength>;
   using BlockSize = typename Config::BlockSize;
   using Table = typename Config::Table;
-  using Allocator = AllocatorBase<Table, sizeof(Table)>;
+  using Page = kernel::mm::Page<kPageSize>;
+  using TableAllocator = AllocatorBase<Table, sizeof(Table)>;
+  using PageAllocator = AllocatorBase<Page, sizeof(Page)>;
 
   struct EntryParameters {
     BlockSize size;
@@ -172,8 +218,38 @@ class TranslationTable {
   };
 
   TranslationTable() : root_table_(nullptr) {
-    LOG(VERBOSE) << "Constructor";
+    LOG(DEBUG) << "Constructor";
     root_table_ = MakeTable();
+  }
+
+  ~TranslationTable() {
+    LOG(DEBUG) << "Destructor";
+    DeallocTable(*root_table_, Config::kTableLevel);
+    TableAllocator::Deallocate(root_table_);
+  }
+
+  void DeallocTable(Table& table, const LookupLevel level) {
+    for (auto it = table.Begin(); it != table.End(); it++) {
+      auto& item = Get<typename Table::TableItem>(*it);
+
+      auto type = Get<typename Table::TableItem::EntryType>(item);
+      void* next_item = item.GetAddress();
+
+      LOG(VERBOSE) << "Found table item: " << next_item
+                   << " type: " << static_cast<uint64_t>(type)
+                   << " level: " << static_cast<size_t>(level);
+      if (type == EntryType::TABLE) {
+        if (level != LookupLevel::_1) {
+          auto next_level = utils::EnumIterator<LookupLevel, 0>(level);
+          next_level--;
+          auto next_level_table = reinterpret_cast<Table*>(next_item);
+          DeallocTable(*next_level_table, next_level.Value());
+          TableAllocator::Deallocate(next_level_table);
+        } else {
+          PageAllocator::Deallocate(reinterpret_cast<Page*>(next_item));
+        }
+      }
+    }
   }
 
   void* GetBase() { return reinterpret_cast<void*>(root_table_); }
@@ -199,9 +275,6 @@ class TranslationTable {
               .GetAddress());
 
       if (nullptr == next_level_table) {
-        //        DDBG_LOG("current level: ", it.Int());
-        //        DDBG_LOG("table index: ", index);
-
         next_level_table = MakeTable();
         auto new_item = typename Table::TableItem();
         new_item.Set(typename Table::TableItem::EntryType(EntryType::TABLE),
@@ -229,10 +302,6 @@ class TranslationTable {
     const auto index = Config::CalcIndex(v_ptr, level);
     auto& entry = table->at(index);
 
-    //    DDBG_LOG("New etry. table level: ",
-    //    static_cast<LookupLevelInt>(level)); DDBG_LOG("entry index: ", index);
-    //    DDBG_LOG("address: ", address);
-
     if (LookupLevel::_3 == level) {
       entry = MakeEntry<TableLvl::_1>(entry_type, address, param);
     } else if (LookupLevel::_2 == level) {
@@ -259,8 +328,8 @@ class TranslationTable {
   }
 
   Table* MakeTable() {
-    Table* table = new (Allocator::Allocate()) Table();
-    //    DDBG_LOG("New table ptr: ", reinterpret_cast<uint64_t>(table));
+    Table* table = TableAllocator::Make();
+    LOG(VERBOSE) << "New table by address: " << table;
     return table;
   }
 

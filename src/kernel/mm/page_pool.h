@@ -34,8 +34,13 @@ struct __attribute__((__packed__)) PageInfo {
 
 class PagePool : public Pool<PageInfo, size_t, BootAllocator> {
  public:
-  PagePool(const size_t length)
-      : Pool(length / PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes) {}
+  static constexpr size_t GetPageCount(const size_t bytes) {
+    return (bytes / PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes);
+  }
+
+  PagePool(const size_t length) : Pool(GetPageCount(length)) {}
+
+  void CutBytes(const size_t length) { Pool::Cut(GetPageCount(length)); }
 };
 
 class PhysicalPagePool : public PagePool {
@@ -83,6 +88,7 @@ struct PhysicalPagePoolAllocator {
     auto index = ((reinterpret_cast<uint8_t*>(address) - pool->BeginAddress()) /
                   PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes);
 
+    address->~T();
     LOG(VERBOSE) << "PhysicalPage dealloc index: " << index
                  << " address:" << address;
     pool->DeallocateByIndex(index);

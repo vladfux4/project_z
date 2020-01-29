@@ -26,25 +26,28 @@ GNU General Public License for more details.
 #include "kernel/mm/address_space.h"
 #include "kernel/mm/boot_allocator.h"
 #include "kernel/mm/physical_allocator.h"
+#include "kernel/mm/unique_ptr.h"
 
 namespace kernel {
 namespace mm {
 
 class Memory {
  public:
+  using VirtualAddressSpace = AddressSpace<PhysicalAllocator>;
+
   Memory();
   ~Memory();
 
   void Init();
 
-  // private:
-  using PhysicalAddressSpace = AddressSpace<BootAllocator>;
-  using VirtualAddressSpace = AddressSpace<PhysicalAllocator>;
+  void Select(VirtualAddressSpace& space);
 
-  using TranslationTable = PhysicalAddressSpace::TranslationTable;
+  mm::UniquePointer<mm::Memory::VirtualAddressSpace, mm::PhysicalAllocator>
+  CreateVirtualAddressSpace();
 
+ private:
   arch::mm::MMU mmu_;
-  PhysicalAddressSpace p_space_;
+  AddressSpace<BootAllocator> p_space_;
 };
 
 }  // namespace mm

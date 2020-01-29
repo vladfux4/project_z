@@ -32,22 +32,13 @@ namespace scheduler {
 class Scheduler {
  public:
   Scheduler(mm::Memory& memory) : memory_(memory) {}
-  //  ~Scheduler();
-
-  //  void Init(mm::Memory& memory);
 
   mm::UniquePointer<Process, mm::PhysicalAllocator> CreateProcess() {
-    auto space = mm::UniquePointer<mm::Memory::VirtualAddressSpace,
-                                   mm::PhysicalAllocator>::Make();
-
     return mm::UniquePointer<Process, mm::PhysicalAllocator>::Make(
-        std::move(space));
+        memory_.CreateVirtualAddressSpace());
   }
 
-  void Select(Process& process) {
-    memory_.mmu_.SetHigherTable(
-        process.space_.Get()->translation_table.GetBase());
-  }
+  void Select(Process& process) { memory_.Select(process.AddressSpace()); }
 
   mm::Memory& memory_;
 };
