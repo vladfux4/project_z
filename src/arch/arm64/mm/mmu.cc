@@ -17,6 +17,7 @@ GNU General Public License for more details.
 #include "arch/arm64/mm/mmu.h"
 
 #include "arch/arm64/mm/translation_descriptor.h"
+#include "arch/arm64/system.h"
 #include "kernel/config.h"
 
 namespace arch {
@@ -57,17 +58,16 @@ void MMU::Enable() {
   tcr_.FlushToEl1();
 
   // toggle some bits in system control register to enable page translation
-  asm volatile("isb; mrs %0, sctlr_el1" : "=r"(r));
-  r |= 0xC00800;    // set mandatory reserved bits
-  r |= (1 << 12) |  // I, Instruction cache enable. This is an enable bit for
-                    // instruction caches at EL0 and EL1
-       (1 << 4) |   // SA0, stack Alignment Check Enable for EL0
-       (1 << 3) |   // SA, Stack Alignment Check Enable
-       (1 << 2) |   // C, Data cache enable. This is an enable bit for data
-                    // caches at EL0 and EL1
-       (1 << 1) |   // A, Alignment check enable bit
-       (1 << 0);    // set M, enable MMU
-  asm volatile("msr sctlr_el1, %0" : : "r"(r));
+  asm volatile("isb");
+  sys::SystemControlRegister scr;
+  scr.ReadEl1();
+  constexpr auto crc_value = sys::SystemControlRegister::MakeValue(
+      sys::SystemControlRegister::I(true),
+      sys::SystemControlRegister::SA0(true),
+      sys::SystemControlRegister::SA(true), sys::SystemControlRegister::C(true),
+      sys::SystemControlRegister::A(true), sys::SystemControlRegister::M(true));
+  scr.Set(crc_value);
+  scr.FlushToEl1();
   asm volatile("isb");
 }
 
