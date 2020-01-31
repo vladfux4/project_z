@@ -34,11 +34,22 @@ class Scheduler {
   Scheduler(mm::Memory& memory) : memory_(memory) {}
 
   mm::UniquePointer<Process, mm::PhysicalAllocator> CreateProcess() {
-    return mm::UniquePointer<Process, mm::PhysicalAllocator>::Make(
+    auto process = mm::UniquePointer<Process, mm::PhysicalAllocator>::Make(
         memory_.CreateVirtualAddressSpace());
+    
+    process->AddressSpace().MapNewPage(
+        reinterpret_cast<void*>(Process::kStackStart - mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes));
+    return process;
   }
 
-  void Select(Process& process) { memory_.Select(process.AddressSpace()); }
+  void Select(Process& process) { 
+    memory_.Select(process.AddressSpace());
+
+    asm volatile("msr sp_el0, %0" : : "r"(Process::kStackStart));
+    asm volatile("msr     SPSel, 0");
+    process.Exec();
+    asm volatile("msr     SPSel, 1");
+  }
 
   mm::Memory& memory_;
 };

@@ -32,6 +32,8 @@ class Process {
  public:
   using Function = void (*)();
 
+  static constexpr auto kStackStart = 0xFFFFFFFFFFF00000;
+
   Process(mm::UniquePointer<mm::Memory::VirtualAddressSpace,
                             mm::PhysicalAllocator>&& space)
       : space_(std::move(space)), func_(nullptr) {}
