@@ -95,10 +95,18 @@ void Memory::Select(Memory::VirtualAddressSpace& space) {
   mmu_.SetHigherTable(space.translation_table.GetBase());
 }
 
-mm::UniquePointer<Memory::VirtualAddressSpace, PhysicalAllocator>
+//mm::UniquePointer<Memory::VirtualAddressSpace, PhysicalAllocator>
+//Memory::CreateVirtualAddressSpace() {
+//  return mm::UniquePointer<mm::Memory::VirtualAddressSpace,
+//                           mm::PhysicalAllocator>::Make();
+//}
+
+Memory::VirtualAddressSpace*
 Memory::CreateVirtualAddressSpace() {
-  return mm::UniquePointer<mm::Memory::VirtualAddressSpace,
-                           mm::PhysicalAllocator>::Make();
+//  return mm::UniquePointer<mm::Memory::VirtualAddressSpace,
+//                           mm::PhysicalAllocator>::Make();
+  return mm::PhysicalAllocator<mm::Memory::VirtualAddressSpace>::Make();
+//                           mm>::Make();
 }
 
 }  // namespace mm

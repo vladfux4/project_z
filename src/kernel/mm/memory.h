@@ -42,7 +42,7 @@ class Memory {
 
   void Select(VirtualAddressSpace& space);
 
-  mm::UniquePointer<mm::Memory::VirtualAddressSpace, mm::PhysicalAllocator>
+  mm::Memory::VirtualAddressSpace*
   CreateVirtualAddressSpace();
 
  private:

@@ -54,6 +54,10 @@ class MMU {
    */
   __attribute__((always_inline)) void SetTTBR1(void* address) {
     asm volatile("msr ttbr1_el1, %0" : : "r"(address));
+//    asm volatile("tlbi ALLE1");
+//    asm volatile("tlbi vmalle1is");
+//    asm volatile("dsb ish");
+//    asm volatile("isb");
   }
 
   tcr::TcrRegister tcr_;

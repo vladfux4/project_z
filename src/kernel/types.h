@@ -51,8 +51,7 @@ struct PageSizeInfo<PageSize::_64KB> {
 };
 
 template <PageSize kPageSize>
-class Page {
- private:
+struct Page {
   uint8_t data[PageSizeInfo<kPageSize>::in_bytes];
 };
 

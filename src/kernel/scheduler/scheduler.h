@@ -35,26 +35,39 @@ class Scheduler {
 
   mm::UniquePointer<Process, mm::PhysicalAllocator> CreateProcess(
       const char* name, Process::Function func) {
+    auto space = memory_.CreateVirtualAddressSpace();
+   
     auto process = mm::UniquePointer<Process, mm::PhysicalAllocator>::Make(
-        memory_.CreateVirtualAddressSpace(), name, func);
+        space, name, func);
+    
+ 
+    auto stack_ptr = process->AddressSpace().MapNewPage(reinterpret_cast<void*>(
+        Process::kStackStart -
+        mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes));
+
+    
 
     processes_[process_count_] = process.Get();
     process_count_++;
-
-    process->AddressSpace().MapNewPage(reinterpret_cast<void*>(
-        Process::kStackStart -
-        mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes));
+    
+    process->context_.sp = stack_ptr;
     return process;
   }
 
   void Init() { /*next_process_ = processes_[0]*/
-    ;
+//    Tick();
   }
 
   void Tick() {
     // Here should be actual shceduling algo
+    static size_t tick = 0;
     static size_t current_process = 0;
     current_process = (current_process + 1) % process_count_;
+    
+    if ((tick % 3) == 0) {
+        current_process = 0;
+    }
+    tick++;
 
     Select(*processes_[current_process]);
   }
@@ -63,7 +76,7 @@ class Scheduler {
     current_process_ = next_process_;
     next_process_ = &process;
 
-    memory_.Select(process.AddressSpace());
+//    memory_.Select(process.AddressSpace());
 
     //    asm volatile("msr sp_el0, %0" : : "r"(Process::kStackStart));
     //    asm volatile("msr     SPSel, 0");

@@ -67,26 +67,25 @@ class Process {
       uint64_t x30;
     };
 
+    void* translation_table;
     Function elr;
     uint64_t spsr;
+    void* sp;
     Registers registers;
-    uint64_t sp;
-    void* translation_table;
   };
 
   static_assert(sizeof(Context) == ((31 * 8) + (4 * 8)));
 
   static constexpr auto kStackStart = 0xFFFFFFFFFFF00000;
 
-  Process(mm::UniquePointer<mm::Memory::VirtualAddressSpace,
-                            mm::PhysicalAllocator>&& space,
+  Process(mm::Memory::VirtualAddressSpace* space,
           const char* name, Function func)
-      : space_(std::move(space)), func_(func), name_(name) {
+      : space_((space)), func_(func), name_(name) {
     context_.elr = func;
     context_.spsr = 0x3C4;
     context_.registers = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    context_.sp = kStackStart;
+    context_.sp = nullptr;
     context_.translation_table = space_->translation_table.GetBase();
 
     LOG(DEBUG) << "SP: " << context_.sp;
@@ -103,11 +102,12 @@ class Process {
   mm::Memory::VirtualAddressSpace& AddressSpace() { return *space_; }
 
  private:
-  mm::UniquePointer<mm::Memory::VirtualAddressSpace, mm::PhysicalAllocator>
+  mm::Memory::VirtualAddressSpace*
       space_;
 
   Function func_;
   const char* name_;
+public:
   Context context_;
 };
 

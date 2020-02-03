@@ -17,15 +17,20 @@ class AddressSpace {
       arch::arm64::mm::TranslationTable<KERNEL_PAGE_SIZE, KERNEL_ADDRESS_LENGTH,
                                         AllocatorBase>;
 
-  void MapNewPage(const void* address) {
+  void* MapNewPage(const void* address) {
     using namespace arch::arm64::mm;
-    auto page = PhysicalAllocator<PageType>::Allocate();
+    auto page = PhysicalAllocator<PageType, sizeof (PageType)>::Allocate();
+//		for (size_t i = 0;i < sizeof (PageType); i++) {
+//			page->data[i] = 0;
+//		}
+
     LOG(DEBUG) << "map page v: " << address << " -> p: " << page;
 
     translation_table.Map(
         address, reinterpret_cast<void*>(page),
         {TranslationTable::BlockSize::_4KB, MemoryAttr::NORMAL, S2AP::NORMAL,
          SH::INNER_SHAREABLE, AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
+		return page;
   }
 
   TranslationTable translation_table;

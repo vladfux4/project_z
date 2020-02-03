@@ -29,7 +29,9 @@ disable_irq:
   msr   daifset, #2
   ret
 
-_exception_entry:
+
+/* switch_el xreg label1 label2 label3*/
+.macro _exception_entry
   stp  x29, x30, [sp, #-16]!
   stp  x27, x28, [sp, #-16]!
   stp  x25, x26, [sp, #-16]!
@@ -49,7 +51,8 @@ _exception_entry:
   mrs  x1, elr_el1
   mrs  x2, spsr_el1
   stp  x1, x2, [sp, #-16]!
-  ret
+/*  ret*/
+.endm
 
 _exception_exit:
   ldp  x1, x2, [sp],#16
@@ -77,34 +80,95 @@ _switch_context:
   cbnz x0, 1f
   b  _exception_exit
 1:
-  b hang
   cbz x1, 2f
-/*  ldp  x9, x10, [sp],#16 //elr, spsr
-  stp  x9, x10, [x1],#16*/
 
-/*  msr  elr_el1, x1
-  msr  spsr_el1, x2*/
+  mov x28, x1
+	add x28, x28, #8 // skip tt
+
+  ldp  x9, x10, [sp],#16 //elr, spsr
+  stp  x9, x10, [x28],#16
+
+  mrs x9, sp_el0 //sp
+  str  x9, [x28],#8
+
+  ldr  x9, [sp],#8 //x0
+  str  x9, [x28],#8
+
+  ldp  x9, x10, [sp],#16 //x1, x2
+  stp  x9, x10, [x28],#16
+	
+  ldp  x9, x10, [sp],#16 //x3, x4
+  stp  x9, x10, [x28],#16
+	
+  ldp  x9, x10, [sp],#16 //x5, x6
+  stp  x9, x10, [x28],#16
+	
+  ldp  x9, x10, [sp],#16 //x7, x8
+  stp  x9, x10, [x28],#16
+	
+  ldp  x9, x10, [sp],#16 //x9, x10
+  stp  x9, x10, [x28],#16
+	
+  ldp  x9, x10, [sp],#16 //x11, x12
+  stp  x9, x10, [x28],#16
+	
+  ldp  x9, x10, [sp],#16 //x13, x14
+  stp  x9, x10, [x28],#16
+	
+  ldp  x9, x10, [sp],#16 //x15, x16
+  stp  x9, x10, [x28],#16
+	
+  ldp  x9, x10, [sp],#16 //x17, x18
+  stp  x9, x10, [x28],#16
+	
+  ldp  x9, x10, [sp],#16 //x19, x20
+  stp  x9, x10, [x28],#16
+	
+  ldp  x9, x10, [sp],#16 //x21, x22
+  stp  x9, x10, [x28],#16
+	
+  ldp  x9, x10, [sp],#16 //x23, x24
+  stp  x9, x10, [x28],#16
+
+  ldp  x9, x10, [sp],#16 //x25, x26
+  stp  x9, x10, [x28],#16
+	
+  ldp  x9, x10, [sp],#16 //x27, x28
+  stp  x9, x10, [x28],#16
+	
+  ldp  x9, x10, [sp],#16 //x29, x30
+  stp  x9, x10, [x28],#16
+
 2:
-  b hang
+  mov x30, x2
+  ldr  x9, [x30],#8
+	msr ttbr1_el1, x9
 
-/*  ldr  x0, [sp],#8
-  ldp  x1, x2, [sp],#16
-  ldp  x3, x4, [sp],#16
-  ldp  x5, x6, [sp],#16
-  ldp  x7, x8, [sp],#16
-  ldp  x9, x10, [sp],#16
-  ldp  x11, x12, [sp],#16
-  ldp  x13, x14, [sp],#16
-  ldp  x15, x16, [sp],#16
-  ldp  x17, x18, [sp],#16
-  ldp  x19, x20, [sp],#16
-  ldp  x21, x22, [sp],#16
-  ldp  x23, x24, [sp],#16
-  ldp  x25, x26, [sp],#16
-  ldp  x27, x28, [sp],#16
-  ldp  x29, x30, [sp],#16
+  ldp  x9, x10, [x30],#16 //elr, spsr*/
+  msr  elr_el1, x9
+  msr  spsr_el1, x10
+	
+  ldr  x9, [x30],#8 //sp
+  msr sp_el0, x9
 
-  b  _exception_exit*/
+  ldr  x0, [x30],#8
+  ldp  x1, x2, [x30],#16
+  ldp  x3, x4, [x30],#16
+  ldp  x5, x6, [x30],#16
+  ldp  x7, x8, [x30],#16
+  ldp  x9, x10, [x30],#16
+  ldp  x11, x12, [x30],#16
+  ldp  x13, x14, [x30],#16
+  ldp  x15, x16, [x30],#16
+  ldp  x17, x18, [x30],#16
+  ldp  x19, x20, [x30],#16
+  ldp  x21, x22, [x30],#16
+  ldp  x23, x24, [x30],#16
+  ldp  x25, x26, [x30],#16
+  ldp  x27, x28, [x30],#16
+  ldp  x29, x30, [x30]
+	msr SPSel, #0
+	eret
 
 .align  11
 .globl  vectors
@@ -112,23 +176,21 @@ vectors:
 .balign 128
   b hang
 .balign 128
-  bl _exception_entry
+  _exception_entry
   bl  c_irq_handler
-  b  _exception_exit
-/*  b  _switch_context*/
+  b  _switch_context
 .balign 128
   b hang
 .balign 128
   b hang
 .balign 128
-  bl _exception_entry
+  _exception_entry
   bl  c_irq_handler
-  b  _exception_exit
-/*  b  _switch_context*/
+  b  _switch_context
 .balign 128
-  bl _exception_entry
+  _exception_entry
   bl  c_irq_handler
-  b  _exception_exit
+  b  _switch_context
 .balign 128
   b hang
 .balign 128
