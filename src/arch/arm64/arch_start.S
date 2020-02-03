@@ -37,14 +37,14 @@ _start:
     // running at EL3?
     cmp     x0, #12
     bne     5f
-    // should never be executed, just for completeness
+/*    // should never be executed, just for completeness
     mov     x2, #0x5b1
     msr     scr_el3, x2
     mov     x2, #0x3c9
     msr     spsr_el3, x2
     adr     x2, 5f
     msr     elr_el3, x2
-    eret
+    eret*/
 
     // running at EL2?
 5:  cmp     x0, #4

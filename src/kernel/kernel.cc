@@ -23,7 +23,6 @@ GNU General Public License for more details.
 #include "kernel/logger.h"
 #include "kernel/mm/unique_ptr.h"
 
-/// dummy operators for c++ support
 extern "C" {
 void __cxa_pure_virtual(void) {
   // We might want to write some diagnostics to uart in this case
@@ -44,18 +43,27 @@ __attribute__((__noreturn__)) void __assert_func(const char*, int, const char*,
   while (true) {
   }
 }
+
+extern uint8_t vectors;
+extern void enable_irq(void);
+extern void disable_irq(void);
 }
 
 void Function_1() {
   static uint64_t a = 0;
-  
-    while (true) {
+
+  //  while (true) {
   a++;
 
   uint64_t* v_ptr =
       reinterpret_cast<uint64_t*>(0xFFFFFFFFFFE00050);  // mapped on 0x50
   *v_ptr = a;
-}
+
+  LOG(INFO) << "Process_1 delay start";
+  for (size_t i = 0; i < 0x11FFFFFF; i++) {
+  }
+  LOG(INFO) << "Process_1 delay end";
+  //  }
 }
 
 void Function_2() {
@@ -65,13 +73,23 @@ void Function_2() {
   uint64_t* v_ptr =
       reinterpret_cast<uint64_t*>(0xFFFFFFFFFFF00060);  // mapped on 0x50
   *v_ptr = a;
+
+  LOG(INFO) << "Process_2 delay start";
+  for (size_t i = 0; i < 0x11FFFFFF; i++) {
+  }
+  LOG(INFO) << "Process_2 delay end";
 }
 
 namespace kernel {
 
 static uint8_t __attribute__((aligned(4096))) kernel_storage[sizeof(Kernel)];
 
-Kernel::Kernel() : memory_(), scheduler_(memory_) {}
+Kernel::Kernel() : memory_(), scheduler_(memory_), sys_timer_(*this) {
+  StaticScheduler::Init(scheduler_);
+  StaticSysTimer::Init(sys_timer_);
+}
+
+Kernel::~Kernel() {}
 
 void Kernel::Routine() {
   Init();
@@ -81,32 +99,32 @@ void Kernel::Routine() {
             << static_cast<size_t>(
                    kernel::mm::PhysicalPagePool::Get()->FreeItems());
   {
-    auto process_1 = scheduler_.CreateProcess();
+    auto process_1 = scheduler_.CreateProcess("Process_1", Function_1);
     process_1->AddressSpace().MapNewPage(
         reinterpret_cast<void*>(0xFFFFFFFFFFE00000));
-    process_1->SetExec(Function_1);
 
-    auto process_2 = scheduler_.CreateProcess();
+    auto process_2 = scheduler_.CreateProcess("Process_2", Function_2);
     process_2->AddressSpace().MapNewPage(
         reinterpret_cast<void*>(0xFFFFFFFFFFF00000));
-    process_2->SetExec(Function_2);
+
+    scheduler_.Init();
+    sys_timer_.Enable();
+    enable_irq();
+
+    //    asm("svc 0");
 
     // address translation test code
-//    while (true) {
-//      static uint64_t a = 0;
-//      a++;
-//      uint64_t* ptr = reinterpret_cast<uint64_t*>(0x40);
-//      *ptr = a;
+    while (true) {
+      static uint64_t a = 0;
+      a++;
+      uint64_t* ptr = reinterpret_cast<uint64_t*>(0x40);
+      *ptr = a;
 
-      scheduler_.Select(*process_1);
-//      process_1->Exec();
-      scheduler_.Select(*process_2);
-//      process_2->Exec();
-
-      //      if (a == 0xFF) {
-      //        break;
-      //      }
-//    }
+      LOG(INFO) << "Kernel delay start";
+      for (size_t i = 0; i < 0x1FFFFFFF; i++) {
+      }
+      LOG(INFO) << "Kernel delay end";
+    }
   }
 
   LOG(INFO) << "Free pages: "
@@ -114,119 +132,44 @@ void Kernel::Routine() {
                    kernel::mm::PhysicalPagePool::Get()->FreeItems());
 }
 
-Kernel::~Kernel() {}
+void Kernel::HandleTimer() {
+  LOG(INFO) << "Tick";
+  scheduler_.Tick();
+}
+
+void Kernel::Init() {
+  asm volatile("msr	vbar_el1, %0" : : "r"(&vectors));
+  log::InitPrint();
+  memory_.Init();
+}
 
 extern "C" {
 
-extern uint8_t vectors;
+void c_irq_handler() {
+  Kernel::StaticSysTimer::Get()->Tick();
+  auto scheduler = Kernel::StaticScheduler::Get();
+  auto current = scheduler->CurrentProcess();
+  auto next = scheduler->ProcessToSwitch();
+  LOG(INFO) << "Switch: " << ((current) ? current->Name() : "Null") << " -> "
+            << ((next) ? next->Name() : "Null");
 
-static uint32_t cntfrq = 0;
+  register uint64_t x0 asm("x0") = (current != next);
+  (void)(x0);
 
-uint32_t read_cntfrq(void) {
-  uint32_t val;
-  asm volatile("mrs %0, cntfrq_el0" : "=r"(val));
-  return val;
-}
-
-void write_cntv_tval(uint32_t val) {
-  asm volatile("msr cntv_tval_el0, %0" ::"r"(val));
-}
-
-uint32_t read_cntv_tval(void) {
-  uint32_t val;
-  asm volatile("mrs %0, cntv_tval_el0" : "=r"(val));
-  return val;
-}
-
-// Memory-Mapped I/O output
-static inline void mmio_write(intptr_t reg, uint32_t data) {
-  *(volatile uint32_t*)reg = data;
-}
-
-// Memory-Mapped I/O input
-static inline uint32_t mmio_read(intptr_t reg) {
-  return *(volatile uint32_t*)reg;
-}
-
-#define CORE0_TIMER_IRQCNTL 0x40000040
-#define CORE0_IRQ_SOURCE 0x40000060
-
-void routing_core0cntv_to_core0irq(void) {
-  mmio_write(CORE0_TIMER_IRQCNTL, 0x08);
-}
-
-void enable_cntv(void) {
-  uint32_t cntv_ctl;
-  cntv_ctl = 1;
-  asm volatile("msr cntv_ctl_el0, %0" ::"r"(cntv_ctl));
-}
-
-extern void enable_irq(void);
-
-extern void disable_irq(void);
-
-uint32_t read_core0timer_pending(void) {
-  uint32_t tmp;
-  tmp = mmio_read(CORE0_IRQ_SOURCE);
-  return tmp;
-}
-
-uint64_t read_cntvct(void) {
-  uint64_t val;
-  asm volatile("mrs %0, cntvct_el0" : "=r"(val));
-  return (val);
-}
-
-void timer_tick() {
-  uint32_t cntvct;
-  uint32_t val;
-
-  disable_irq();
-  if (read_core0timer_pending() & 0x08) {
-    val = read_cntv_tval();
-    LOG(INFO) << "handler CNTV_TVAL: " << val;
-
-    write_cntv_tval(cntfrq);  // clear cntv interrupt and set next 1sec timer.
-
-    cntvct = read_cntvct();
-    LOG(INFO) << "handler CNTVCT: " << cntvct;
+  if (current) {
+    register kernel::scheduler::Process::Context* x1 asm("x1") =
+        current->GetContext();
+    (void)(x1);
   }
 
-  enable_irq();
-}
-
-void c_irq_handler(void) {
-  timer_tick();
-}
-
-void c_process_irq_handler(void) {
-  timer_tick();
-  LOG(INFO) << "Exception from process context";
-  
-  LOG(INFO) << "Start delay";
-  for (size_t i = 0; i < 0x1FFFFFFF; i++) {
+  if (next) {
+    register kernel::scheduler::Process::Context* x2 asm("x2") =
+        next->GetContext();
+    (void)(x2);
   }
-  LOG(INFO) << "End delay";
 }
-
-void Kernel::Init() { memory_.Init(); }
 
 void KernelEntry() {
-  asm volatile("msr	vbar_el1, %0" : : "r"(&vectors));
-
-  log::InitPrint();
-
-  cntfrq = read_cntfrq();
-  LOG(INFO) << "CNTFRQ  : " << cntfrq;
-
-  write_cntv_tval(cntfrq);  // clear cntv interrupt and set next 1 sec timer.
-  uint32_t val = read_cntv_tval();
-  LOG(INFO) << "CNTV_TVAL  : " << val;
-
-  routing_core0cntv_to_core0irq();
-  enable_cntv();
-  enable_irq();
-
   auto kernel = new (reinterpret_cast<Kernel*>(kernel_storage)) Kernel();
   kernel->Routine();
 }

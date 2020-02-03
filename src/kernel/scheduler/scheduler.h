@@ -31,27 +31,55 @@ namespace scheduler {
 
 class Scheduler {
  public:
-  Scheduler(mm::Memory& memory) : memory_(memory) {}
+  Scheduler(mm::Memory& memory) : memory_(memory), process_count_(0) {}
 
-  mm::UniquePointer<Process, mm::PhysicalAllocator> CreateProcess() {
+  mm::UniquePointer<Process, mm::PhysicalAllocator> CreateProcess(
+      const char* name, Process::Function func) {
     auto process = mm::UniquePointer<Process, mm::PhysicalAllocator>::Make(
-        memory_.CreateVirtualAddressSpace());
-    
-    process->AddressSpace().MapNewPage(
-        reinterpret_cast<void*>(Process::kStackStart - mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes));
+        memory_.CreateVirtualAddressSpace(), name, func);
+
+    processes_[process_count_] = process.Get();
+    process_count_++;
+
+    process->AddressSpace().MapNewPage(reinterpret_cast<void*>(
+        Process::kStackStart -
+        mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes));
     return process;
   }
 
-  void Select(Process& process) { 
-    memory_.Select(process.AddressSpace());
-
-    asm volatile("msr sp_el0, %0" : : "r"(Process::kStackStart));
-    asm volatile("msr     SPSel, 0");
-    process.Exec();
-    asm volatile("msr     SPSel, 1");
+  void Init() { /*next_process_ = processes_[0]*/
+    ;
   }
 
+  void Tick() {
+    // Here should be actual shceduling algo
+    static size_t current_process = 0;
+    current_process = (current_process + 1) % process_count_;
+
+    Select(*processes_[current_process]);
+  }
+
+  void Select(Process& process) {
+    current_process_ = next_process_;
+    next_process_ = &process;
+
+    memory_.Select(process.AddressSpace());
+
+    //    asm volatile("msr sp_el0, %0" : : "r"(Process::kStackStart));
+    //    asm volatile("msr     SPSel, 0");
+    //    process.Exec();
+    //    asm volatile("msr     SPSel, 1");
+  }
+
+  Process* CurrentProcess() { return current_process_; }
+  Process* ProcessToSwitch() { return next_process_; }
+
   mm::Memory& memory_;
+  Process* processes_[10];
+  size_t process_count_;
+
+  Process* current_process_ = nullptr;
+  Process* next_process_ = nullptr;
 };
 
 }  // namespace scheduler

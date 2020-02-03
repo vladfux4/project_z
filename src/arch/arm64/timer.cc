@@ -14,52 +14,32 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef KERNEL_KERNEL_H_
-#define KERNEL_KERNEL_H_
-
 #include "arch/arm64/timer.h"
-#include "kernel/mm/memory.h"
-#include "kernel/scheduler/scheduler.h"
-#include "kernel/utils/static_wrapper.h"
 
-namespace kernel {
+#include "kernel/logger.h"
 
-/**
- * @brief The Routine class
- */
-class Kernel : public arch::arm64::Timer::Handler {
- public:
-  using StaticScheduler = utils::StaticWrapper<scheduler::Scheduler>;
-  using StaticSysTimer = utils::StaticWrapper<arch::arm64::Timer>;
+namespace arch {
+namespace arm64 {
 
-  /**
-   * @brief Constructor
-   */
-  Kernel();
+Timer::Timer(Handler& handler) : cnt_frq_(0), handler_(handler) {
+  cnt_frq_ = ReadCntFrq();
+  WriteCntvTval(cnt_frq_);  // clear cntv interrupt and set next 1 sec timer.
+  RoutingCore0CntvToCore0Irq();
 
-  /**
-   * @brief Run
-   */
-  void Routine();
+  LOG(VERBOSE) << "CNTFRQ  : " << cnt_frq_;
+  LOG(VERBOSE) << "CNTV_TVAL  : " << ReadCntvTval();
+}
 
-  void HandleTimer() override;
+void Timer::Tick() {
+  if (ReadCore0TimerPending() & 0x08) {
+    LOG(VERBOSE) << "handler CNTV_TVAL: " << ReadCntvTval();
+    LOG(VERBOSE) << "handler CNTVCT: " << ReadCntvCt();
 
-  /**
-   * @brief Destructor
-   */
-  ~Kernel();
+    handler_.HandleTimer();
+    WriteCntvTval(cnt_frq_);  // clear cntv interrupt and set next 1sec timer.
+  }
+}
 
- private:
-  /**
-   * @brief Init kernel
-   */
-  void Init();
-
-  mm::Memory memory_;
-  scheduler::Scheduler scheduler_;
-  arch::arm64::Timer sys_timer_;
-};
-
-}  // namespace kernel
-
-#endif  // KERNEL_KERNEL_H_
+// namespace sys
+}  // namespace arm64
+}  // namespace arch

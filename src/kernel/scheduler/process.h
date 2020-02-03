@@ -32,19 +32,73 @@ class Process {
  public:
   using Function = void (*)();
 
+  struct Context {
+    struct Registers {
+      uint64_t x0;
+      uint64_t x1;
+      uint64_t x2;
+      uint64_t x3;
+      uint64_t x4;
+      uint64_t x5;
+      uint64_t x6;
+      uint64_t x7;
+      uint64_t x8;
+      uint64_t x9;
+      uint64_t x10;
+      uint64_t x11;
+      uint64_t x12;
+      uint64_t x13;
+      uint64_t x14;
+      uint64_t x15;
+      uint64_t x16;
+      uint64_t x17;
+      uint64_t x18;
+      uint64_t x19;
+      uint64_t x20;
+      uint64_t x21;
+      uint64_t x22;
+      uint64_t x23;
+      uint64_t x24;
+      uint64_t x25;
+      uint64_t x26;
+      uint64_t x27;
+      uint64_t x28;
+      uint64_t x29;
+      uint64_t x30;
+    };
+
+    Function elr;
+    uint64_t spsr;
+    Registers registers;
+    uint64_t sp;
+    void* translation_table;
+  };
+
+  static_assert(sizeof(Context) == ((31 * 8) + (4 * 8)));
+
   static constexpr auto kStackStart = 0xFFFFFFFFFFF00000;
 
   Process(mm::UniquePointer<mm::Memory::VirtualAddressSpace,
-                            mm::PhysicalAllocator>&& space)
-      : space_(std::move(space)), func_(nullptr) {}
+                            mm::PhysicalAllocator>&& space,
+          const char* name, Function func)
+      : space_(std::move(space)), func_(func), name_(name) {
+    context_.elr = func;
+    context_.spsr = 0x3C4;
+    context_.registers = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    context_.sp = kStackStart;
+    context_.translation_table = space_->translation_table.GetBase();
 
-  void Exec() {
-    if (func_ != nullptr) {
-      func_();
-    }
+    LOG(DEBUG) << "SP: " << context_.sp;
+    LOG(DEBUG) << "SPSR: " << context_.spsr;
+    LOG(DEBUG) << "ELR: " << reinterpret_cast<void*>(context_.elr);
   }
 
-  void SetExec(Function func) { func_ = func; }
+  void Exec() { func_(); }
+
+  const char* Name() { return name_; }
+
+  Context* GetContext() { return &context_; }
 
   mm::Memory::VirtualAddressSpace& AddressSpace() { return *space_; }
 
@@ -53,6 +107,8 @@ class Process {
       space_;
 
   Function func_;
+  const char* name_;
+  Context context_;
 };
 
 }  // namespace scheduler
