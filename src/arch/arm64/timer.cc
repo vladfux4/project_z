@@ -18,6 +18,12 @@ GNU General Public License for more details.
 
 #include "kernel/logger.h"
 
+
+extern "C" {
+extern void enable_irq(void);
+extern void disable_irq(void);
+}
+
 namespace arch {
 namespace arm64 {
 
@@ -31,13 +37,16 @@ Timer::Timer(Handler& handler) : cnt_frq_(0), handler_(handler) {
 }
 
 void Timer::Tick() {
+//  disable_irq();
   if (ReadCore0TimerPending() & 0x08) {
+    WriteCntvTval(cnt_frq_);  // clear cntv interrupt and set next 1sec timer.
+    
     LOG(VERBOSE) << "handler CNTV_TVAL: " << ReadCntvTval();
     LOG(VERBOSE) << "handler CNTVCT: " << ReadCntvCt();
-
     handler_.HandleTimer();
-    WriteCntvTval(cnt_frq_);  // clear cntv interrupt and set next 1sec timer.
   }
+
+//  enable_irq();
 }
 
 // namespace sys

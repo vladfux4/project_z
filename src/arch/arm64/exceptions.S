@@ -30,7 +30,6 @@ disable_irq:
   ret
 
 
-/* switch_el xreg label1 label2 label3*/
 .macro _exception_entry
   stp  x29, x30, [sp, #-16]!
   stp  x27, x28, [sp, #-16]!
@@ -51,7 +50,13 @@ disable_irq:
   mrs  x1, elr_el1
   mrs  x2, spsr_el1
   stp  x1, x2, [sp, #-16]!
-/*  ret*/
+.endm
+
+.macro _switch_ttb
+	msr ttbr1_el1, x9
+	tlbi vmalle1is
+  dsb ish
+	isb
 .endm
 
 _exception_exit:
@@ -82,6 +87,7 @@ _switch_context:
 1:
   cbz x1, 2f
 
+_save_context:
   mov x28, x1
 	add x28, x28, #8 // skip tt
 
@@ -93,56 +99,42 @@ _switch_context:
 
   ldr  x9, [sp],#8 //x0
   str  x9, [x28],#8
-
   ldp  x9, x10, [sp],#16 //x1, x2
   stp  x9, x10, [x28],#16
-	
   ldp  x9, x10, [sp],#16 //x3, x4
   stp  x9, x10, [x28],#16
-	
   ldp  x9, x10, [sp],#16 //x5, x6
   stp  x9, x10, [x28],#16
-	
   ldp  x9, x10, [sp],#16 //x7, x8
   stp  x9, x10, [x28],#16
-	
   ldp  x9, x10, [sp],#16 //x9, x10
   stp  x9, x10, [x28],#16
-	
   ldp  x9, x10, [sp],#16 //x11, x12
   stp  x9, x10, [x28],#16
-	
   ldp  x9, x10, [sp],#16 //x13, x14
   stp  x9, x10, [x28],#16
-	
   ldp  x9, x10, [sp],#16 //x15, x16
   stp  x9, x10, [x28],#16
-	
   ldp  x9, x10, [sp],#16 //x17, x18
   stp  x9, x10, [x28],#16
-	
   ldp  x9, x10, [sp],#16 //x19, x20
   stp  x9, x10, [x28],#16
-	
   ldp  x9, x10, [sp],#16 //x21, x22
   stp  x9, x10, [x28],#16
-	
   ldp  x9, x10, [sp],#16 //x23, x24
   stp  x9, x10, [x28],#16
-
   ldp  x9, x10, [sp],#16 //x25, x26
   stp  x9, x10, [x28],#16
-	
   ldp  x9, x10, [sp],#16 //x27, x28
   stp  x9, x10, [x28],#16
-	
   ldp  x9, x10, [sp],#16 //x29, x30
   stp  x9, x10, [x28],#16
 
 2:
+_load_context:
   mov x30, x2
   ldr  x9, [x30],#8
-	msr ttbr1_el1, x9
+	_switch_ttb
 
   ldp  x9, x10, [x30],#16 //elr, spsr*/
   msr  elr_el1, x9
@@ -167,7 +159,7 @@ _switch_context:
   ldp  x25, x26, [x30],#16
   ldp  x27, x28, [x30],#16
   ldp  x29, x30, [x30]
-	msr SPSel, #0
+/*	msr SPSel, #0*/
 	eret
 
 .align  11

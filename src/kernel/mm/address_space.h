@@ -19,12 +19,8 @@ class AddressSpace {
 
   void* MapNewPage(const void* address) {
     using namespace arch::arm64::mm;
-    auto page = PhysicalAllocator<PageType, sizeof (PageType)>::Allocate();
-//		for (size_t i = 0;i < sizeof (PageType); i++) {
-//			page->data[i] = 0;
-//		}
-
-    LOG(DEBUG) << "map page v: " << address << " -> p: " << page;
+    auto page = PhysicalAllocator<PageType>::Allocate();
+    LOG(DEBUG) << "map new page v: " << address << " -> p: " << page;
 
     translation_table.Map(
         address, reinterpret_cast<void*>(page),

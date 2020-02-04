@@ -42,7 +42,7 @@ class BootAllocator {
 
   static void Deallocate(T* item) {
     (void)item;
-    assert(false);
+//    assert(false);
   }
 
   template <typename... Args>

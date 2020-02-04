@@ -21,6 +21,7 @@ GNU General Public License for more details.
 #include <cstdint>
 
 #include "kernel/mm/page_pool.h"
+#include "kernel/mm/boot_allocator.h"
 
 namespace kernel {
 namespace mm {

@@ -78,14 +78,15 @@ class Process {
 
   static constexpr auto kStackStart = 0xFFFFFFFFFFF00000;
 
-  Process(mm::Memory::VirtualAddressSpace* space,
-          const char* name, Function func)
-      : space_((space)), func_(func), name_(name) {
+  Process(mm::UniquePointer<mm::Memory::VirtualAddressSpace,
+                            mm::PhysicalAllocator>&& space,
+          const char* name, Function func, void* sp)
+      : space_(std::move(space)), func_(func), name_(name) {
     context_.elr = func;
     context_.spsr = 0x3C4;
     context_.registers = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    context_.sp = nullptr;
+    context_.sp = sp;
     context_.translation_table = space_->translation_table.GetBase();
 
     LOG(DEBUG) << "SP: " << context_.sp;
@@ -102,7 +103,7 @@ class Process {
   mm::Memory::VirtualAddressSpace& AddressSpace() { return *space_; }
 
  private:
-  mm::Memory::VirtualAddressSpace*
+  mm::UniquePointer<mm::Memory::VirtualAddressSpace, mm::PhysicalAllocator>
       space_;
 
   Function func_;

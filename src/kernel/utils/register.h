@@ -132,6 +132,8 @@ template <typename DerivedType, typename RawType, typename... Fields>
 struct Register : StaticRegister<RawType, Fields...> {
   using StaticInterface = StaticRegister<RawType, Fields...>;
 
+	Register() : value(0) {}
+
   static DerivedType* Cast(RawType* address) {
     ValidateRegister<DerivedType>::value;
     return reinterpret_cast<DerivedType*>(address);

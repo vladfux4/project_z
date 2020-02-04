@@ -36,21 +36,24 @@ class Scheduler {
   mm::UniquePointer<Process, mm::PhysicalAllocator> CreateProcess(
       const char* name, Process::Function func) {
     auto space = memory_.CreateVirtualAddressSpace();
-   
-    auto process = mm::UniquePointer<Process, mm::PhysicalAllocator>::Make(
-        space, name, func);
-    
- 
-    auto stack_ptr = process->AddressSpace().MapNewPage(reinterpret_cast<void*>(
-        Process::kStackStart -
-        mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes));
 
-    
+    auto stack_page = space->MapNewPage(reinterpret_cast<void*>(Process::kStackStart));
+    LOG(DEBUG) << "Stack page allocation at: " << stack_page;
+    auto stack_ptr = reinterpret_cast<void*>(Process::kStackStart
+                         + mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes);
+            
+//    auto stack_page = mm::PhysicalAllocator<mm::Page<mm::KERNEL_PAGE_SIZE>>::Allocate();
+//    LOG(DEBUG) << "Stack page allocation: " << stack_page;
+//    auto stack_ptr = reinterpret_cast<void*>(reinterpret_cast<size_t>(stack_page)
+//                         + mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes);
+
+    auto process = mm::UniquePointer<Process, mm::PhysicalAllocator>::Make(
+        std::move(space), name, func, stack_ptr);
+
 
     processes_[process_count_] = process.Get();
     process_count_++;
-    
-    process->context_.sp = stack_ptr;
+
     return process;
   }
 
@@ -90,6 +93,7 @@ class Scheduler {
   mm::Memory& memory_;
   Process* processes_[10];
   size_t process_count_;
+  bool enabled = false;
 
   Process* current_process_ = nullptr;
   Process* next_process_ = nullptr;

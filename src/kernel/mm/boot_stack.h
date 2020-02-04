@@ -37,7 +37,7 @@ class BootStack {
     uint8_t* ret_val = head_;
     head_ += bytes;
 
-    LOG(VERBOSE) << "boot_stack alloc ptr:" << ret_val << " size:" << bytes;
+    LOG(VERBOSE) << "boot_stack alloc ptr: " << ret_val << " size: " << bytes;
     return ret_val;
   }
 

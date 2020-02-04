@@ -316,6 +316,7 @@ class TranslationTable {
                  const EntryParameters& param) {
     using Entry = typename Table::template EntryItem<kLvl>;
     auto entry = Entry();
+    
     entry.Set(typename Entry::EntryType(entry_type),
               typename Entry::Address(address),
               typename Entry::MemoryAttr(param.mem_attr),

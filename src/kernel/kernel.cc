@@ -115,6 +115,7 @@ void Kernel::Routine() {
         reinterpret_cast<void*>(0xFFFFFFFFEEE00050));
 
     scheduler_.Init();
+    scheduler_.enabled = true;
     sys_timer_.Enable();
     enable_irq();
     
@@ -143,8 +144,16 @@ void Kernel::Routine() {
 }
 
 void Kernel::HandleTimer() {
-  LOG(INFO) << "Tick";
-  scheduler_.Tick();
+  enable_irq();
+  if (scheduler_.enabled) {
+    LOG(INFO) << "Scheduler Tick";
+    scheduler_.enabled = false;
+    scheduler_.Tick();
+    scheduler_.enabled = true;
+  } else {
+    LOG(INFO) << "Ignore Scheduler Tick";
+  }
+  disable_irq();
 }
 
 void Kernel::Init() {
@@ -157,13 +166,14 @@ extern "C" {
 
 void c_irq_handler() {
   Kernel::StaticSysTimer::Get()->Tick();
+
   auto scheduler = Kernel::StaticScheduler::Get();
   auto current = scheduler->CurrentProcess();
   auto next = scheduler->ProcessToSwitch();
   LOG(INFO) << "Switch: " << ((current) ? current->Name() : "Null") << " -> "
             << ((next) ? next->Name() : "Null");
 
-  register uint64_t x0 asm("x0");// = switch_context;
+  register uint64_t x0 asm("x0");
     register kernel::scheduler::Process::Context* x1 asm("x1");
     register kernel::scheduler::Process::Context* x2 asm("x2");
 
