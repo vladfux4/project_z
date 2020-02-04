@@ -37,7 +37,6 @@ Timer::Timer(Handler& handler) : cnt_frq_(0), handler_(handler) {
 }
 
 void Timer::Tick() {
-//  disable_irq();
   if (ReadCore0TimerPending() & 0x08) {
     WriteCntvTval(cnt_frq_);  // clear cntv interrupt and set next 1sec timer.
     
@@ -45,8 +44,6 @@ void Timer::Tick() {
     LOG(VERBOSE) << "handler CNTVCT: " << ReadCntvCt();
     handler_.HandleTimer();
   }
-
-//  enable_irq();
 }
 
 // namespace sys

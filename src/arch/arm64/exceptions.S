@@ -177,7 +177,7 @@ vectors:
   b hang
 .balign 128
   _exception_entry
-  bl  c_irq_handler
+  bl  c_sync_handler
   b  _switch_context
 .balign 128
   _exception_entry

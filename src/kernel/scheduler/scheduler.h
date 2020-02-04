@@ -37,19 +37,23 @@ class Scheduler {
       const char* name, Process::Function func) {
     auto space = memory_.CreateVirtualAddressSpace();
 
-    auto stack_page = space->MapNewPage(reinterpret_cast<void*>(Process::kStackStart));
+    auto stack_page =
+        space->MapNewPage(reinterpret_cast<void*>(Process::kStackStart));
     LOG(DEBUG) << "Stack page allocation at: " << stack_page;
-    auto stack_ptr = reinterpret_cast<void*>(Process::kStackStart
-                         + mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes);
-            
-//    auto stack_page = mm::PhysicalAllocator<mm::Page<mm::KERNEL_PAGE_SIZE>>::Allocate();
-//    LOG(DEBUG) << "Stack page allocation: " << stack_page;
-//    auto stack_ptr = reinterpret_cast<void*>(reinterpret_cast<size_t>(stack_page)
-//                         + mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes);
+    auto stack_ptr = reinterpret_cast<void*>(
+        Process::kStackStart +
+        mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes);
+
+    //    auto stack_page =
+    //    mm::PhysicalAllocator<mm::Page<mm::KERNEL_PAGE_SIZE>>::Allocate();
+    //    LOG(DEBUG) << "Stack page allocation: " << stack_page;
+    //    auto stack_ptr =
+    //    reinterpret_cast<void*>(reinterpret_cast<size_t>(stack_page)
+    //                         +
+    //                         mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes);
 
     auto process = mm::UniquePointer<Process, mm::PhysicalAllocator>::Make(
         std::move(space), name, func, stack_ptr);
-
 
     processes_[process_count_] = process.Get();
     process_count_++;
@@ -57,18 +61,25 @@ class Scheduler {
     return process;
   }
 
-  void Init() { /*next_process_ = processes_[0]*/
-//    Tick();
+  void Tick() {
+    if (enabled) {
+      LOG(INFO) << "Scheduler Tick";
+      enabled = false;
+      DoTick();
+      enabled = true;
+    } else {
+      LOG(INFO) << "Ignore Scheduler Tick";
+    }
   }
 
-  void Tick() {
+  void DoTick() {
     // Here should be actual shceduling algo
     static size_t tick = 0;
     static size_t current_process = 0;
     current_process = (current_process + 1) % process_count_;
-    
+
     if ((tick % 3) == 0) {
-        current_process = 0;
+      current_process = 0;
     }
     tick++;
 
@@ -79,7 +90,7 @@ class Scheduler {
     current_process_ = next_process_;
     next_process_ = &process;
 
-//    memory_.Select(process.AddressSpace());
+    //    memory_.Select(process.AddressSpace());
 
     //    asm volatile("msr sp_el0, %0" : : "r"(Process::kStackStart));
     //    asm volatile("msr     SPSel, 0");

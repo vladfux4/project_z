@@ -50,50 +50,50 @@ extern void disable_irq(void);
 }
 
 void Function_1() {
-    enable_irq();
+  enable_irq();
   static uint64_t a = 0;
 
-    while (true) {
-  uint64_t* v_ptr =
-      reinterpret_cast<uint64_t*>(0xFFFFFFFFFFE00050);  // mapped on 0x50
-  *v_ptr = a;
-  
-  LOG(INFO) << "Process_1 value: " << a;
-  for (size_t i = 0; i < 0x11FFFFFF; i++) {
-    a++;
-  }
+  while (true) {
+    uint64_t* v_ptr =
+        reinterpret_cast<uint64_t*>(0xFFFFFFFFFFE00050);  // mapped on 0x50
+    *v_ptr = a;
+
+    LOG(INFO) << "Process_1 value: " << a;
+    for (size_t i = 0; i < 0x11FFFFFF; i++) {
+      a++;
     }
+  }
 }
 
 void Function_2() {
-    enable_irq();
-    
-    while (true) {
-  static uint64_t a = 0;
+  enable_irq();
 
-  uint64_t* v_ptr =
-      reinterpret_cast<uint64_t*>(0xFFFFFFFFEEE00050);  // mapped on 0x50
-  *v_ptr = a;
-  
-      uint64_t* ptr = reinterpret_cast<uint64_t*>(0x40);
-      *ptr = a;
-      
-  LOG(INFO) << "Process_2 value: " << a;
-  for (size_t i = 0; i < 0x11FFFFFF; i++) {
-    a++;
-  }
-//  LOG(INFO) << "Process_2 delay end";
+  while (true) {
+    static uint64_t a = 0;
 
+    uint64_t* v_ptr =
+        reinterpret_cast<uint64_t*>(0xFFFFFFFFEEE00050);  // mapped on 0x50
+    *v_ptr = a;
+
+    uint64_t* ptr = reinterpret_cast<uint64_t*>(0x40);
+    *ptr = a;
+
+    LOG(INFO) << "Process_2 value: " << a;
+    for (size_t i = 0; i < 0x11FFFFFF; i++) {
+      a++;
     }
+  }
 }
 
 namespace kernel {
 
 static uint8_t __attribute__((aligned(4096))) kernel_storage[sizeof(Kernel)];
 
-Kernel::Kernel() : memory_(), scheduler_(memory_), sys_timer_(*this) {
+Kernel::Kernel()
+    : memory_(), scheduler_(memory_), sys_timer_(*this), superviser_(*this) {
   StaticScheduler::Init(scheduler_);
   StaticSysTimer::Init(sys_timer_);
+  StaticSuperviser::Init(superviser_);
 }
 
 Kernel::~Kernel() {}
@@ -114,15 +114,11 @@ void Kernel::Routine() {
     process_2->AddressSpace().MapNewPage(
         reinterpret_cast<void*>(0xFFFFFFFFEEE00050));
 
-    scheduler_.Init();
     scheduler_.enabled = true;
     sys_timer_.Enable();
     enable_irq();
-    
-//    memory_.Select(process_1->AddressSpace());
-//    Function_1();
 
-//    asm("svc 0");
+    asm("svc #0");
 
     // address translation test code
     while (true) {
@@ -145,16 +141,11 @@ void Kernel::Routine() {
 
 void Kernel::HandleTimer() {
   enable_irq();
-  if (scheduler_.enabled) {
-    LOG(INFO) << "Scheduler Tick";
-    scheduler_.enabled = false;
-    scheduler_.Tick();
-    scheduler_.enabled = true;
-  } else {
-    LOG(INFO) << "Ignore Scheduler Tick";
-  }
+  scheduler_.Tick();
   disable_irq();
 }
+
+void Kernel::HandleSvc() { scheduler_.Tick(); }
 
 void Kernel::Init() {
   asm volatile("msr	vbar_el1, %0" : : "r"(&vectors));
@@ -163,6 +154,37 @@ void Kernel::Init() {
 }
 
 extern "C" {
+
+void c_sync_handler() {
+  LOG(INFO) << "SVC";
+  Kernel::StaticSuperviser::Get()->Handle();
+
+  auto scheduler = Kernel::StaticScheduler::Get();
+  auto current = scheduler->CurrentProcess();
+  auto next = scheduler->ProcessToSwitch();
+  LOG(INFO) << "Switch: " << ((current) ? current->Name() : "Null") << " -> "
+            << ((next) ? next->Name() : "Null");
+
+  register uint64_t x0 asm("x0");
+  register kernel::scheduler::Process::Context* x1 asm("x1");
+  register kernel::scheduler::Process::Context* x2 asm("x2");
+
+  bool switch_context = (current != next);
+  kernel::scheduler::Process::Context* current_context = nullptr;
+  kernel::scheduler::Process::Context* next_context = nullptr;
+
+  if (current) {
+    current_context = current->GetContext();
+  }
+
+  if (next) {
+    next_context = next->GetContext();
+  }
+
+  x0 = switch_context;
+  x1 = current_context;
+  x2 = next_context;
+}
 
 void c_irq_handler() {
   Kernel::StaticSysTimer::Get()->Tick();
@@ -174,21 +196,21 @@ void c_irq_handler() {
             << ((next) ? next->Name() : "Null");
 
   register uint64_t x0 asm("x0");
-    register kernel::scheduler::Process::Context* x1 asm("x1");
-    register kernel::scheduler::Process::Context* x2 asm("x2");
+  register kernel::scheduler::Process::Context* x1 asm("x1");
+  register kernel::scheduler::Process::Context* x2 asm("x2");
 
   bool switch_context = (current != next);
   kernel::scheduler::Process::Context* current_context = nullptr;
   kernel::scheduler::Process::Context* next_context = nullptr;
 
   if (current) {
-        current_context = current->GetContext();
+    current_context = current->GetContext();
   }
 
   if (next) {
-        next_context = next->GetContext();
+    next_context = next->GetContext();
   }
-  
+
   x0 = switch_context;
   x1 = current_context;
   x2 = next_context;

@@ -24,13 +24,29 @@ GNU General Public License for more details.
 
 namespace kernel {
 
+class Supervisor {
+ public:
+  class Handler {
+   public:
+    virtual void HandleSvc() = 0;
+  };
+
+  Supervisor(Handler& handler) : handler_(handler) {}
+
+  void Handle() { handler_.HandleSvc(); }
+
+ private:
+  Handler& handler_;
+};
+
 /**
  * @brief The Routine class
  */
-class Kernel : public arch::arm64::Timer::Handler {
+class Kernel : public arch::arm64::Timer::Handler, public Supervisor::Handler {
  public:
   using StaticScheduler = utils::StaticWrapper<scheduler::Scheduler>;
   using StaticSysTimer = utils::StaticWrapper<arch::arm64::Timer>;
+  using StaticSuperviser = utils::StaticWrapper<Supervisor>;
 
   /**
    * @brief Constructor
@@ -43,6 +59,7 @@ class Kernel : public arch::arm64::Timer::Handler {
   void Routine();
 
   void HandleTimer() override;
+  void HandleSvc() override;
 
   /**
    * @brief Destructor
@@ -58,6 +75,7 @@ class Kernel : public arch::arm64::Timer::Handler {
   mm::Memory memory_;
   scheduler::Scheduler scheduler_;
   arch::arm64::Timer sys_timer_;
+  Supervisor superviser_;
 };
 
 }  // namespace kernel
