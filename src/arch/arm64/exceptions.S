@@ -29,7 +29,6 @@ disable_irq:
   msr   daifset, #2
   ret
 
-
 .macro _exception_entry
   stp  x29, x30, [sp, #-16]!
   stp  x27, x28, [sp, #-16]!
@@ -53,10 +52,10 @@ disable_irq:
 .endm
 
 .macro _switch_ttb
-	msr ttbr1_el1, x9
-	tlbi vmalle1is
+  msr ttbr1_el1, x9
+  tlbi vmalle1is
   dsb ish
-	isb
+  isb
 .endm
 
 _exception_exit:
@@ -85,11 +84,12 @@ _switch_context:
   cbnz x0, 1f
   b  _exception_exit
 1:
-  cbz x1, 2f
+  bl  kernel_context_current
+  cbz x0, _load_context
 
 _save_context:
-  mov x28, x1
-	add x28, x28, #8 // skip tt
+  mov x28, x0
+  add x28, x28, #8 // skip tt
 
   ldp  x9, x10, [sp],#16 //elr, spsr
   stp  x9, x10, [x28],#16
@@ -130,16 +130,17 @@ _save_context:
   ldp  x9, x10, [sp],#16 //x29, x30
   stp  x9, x10, [x28],#16
 
-2:
 _load_context:
-  mov x30, x2
+  bl  kernel_context_to_switch
+  mov x30, x0
+
   ldr  x9, [x30],#8
-	_switch_ttb
+  _switch_ttb
 
   ldp  x9, x10, [x30],#16 //elr, spsr*/
   msr  elr_el1, x9
   msr  spsr_el1, x10
-	
+
   ldr  x9, [x30],#8 //sp
   msr sp_el0, x9
 
@@ -159,8 +160,8 @@ _load_context:
   ldp  x25, x26, [x30],#16
   ldp  x27, x28, [x30],#16
   ldp  x29, x30, [x30]
-/*	msr SPSel, #0*/
-	eret
+/* msr SPSel, #0*/
+  eret
 
 .align  11
 .globl  vectors

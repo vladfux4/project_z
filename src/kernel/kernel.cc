@@ -155,7 +155,17 @@ void Kernel::Init() {
 
 extern "C" {
 
-void c_sync_handler() {
+kernel::scheduler::Process::Context* kernel_context_current() {
+  auto* process = Kernel::StaticScheduler::Get()->CurrentProcess();
+  return (process == nullptr) ? nullptr : process->GetContext();
+}
+
+kernel::scheduler::Process::Context* kernel_context_to_switch() {
+  auto* process = Kernel::StaticScheduler::Get()->ProcessToSwitch();
+  return (process == nullptr) ? nullptr : process->GetContext();
+}
+
+bool c_sync_handler() {
   LOG(INFO) << "SVC";
   Kernel::StaticSuperviser::Get()->Handle();
 
@@ -165,28 +175,11 @@ void c_sync_handler() {
   LOG(INFO) << "Switch: " << ((current) ? current->Name() : "Null") << " -> "
             << ((next) ? next->Name() : "Null");
 
-  register uint64_t x0 asm("x0");
-  register kernel::scheduler::Process::Context* x1 asm("x1");
-  register kernel::scheduler::Process::Context* x2 asm("x2");
-
   bool switch_context = (current != next);
-  kernel::scheduler::Process::Context* current_context = nullptr;
-  kernel::scheduler::Process::Context* next_context = nullptr;
-
-  if (current) {
-    current_context = current->GetContext();
-  }
-
-  if (next) {
-    next_context = next->GetContext();
-  }
-
-  x0 = switch_context;
-  x1 = current_context;
-  x2 = next_context;
+  return switch_context;
 }
 
-void c_irq_handler() {
+bool c_irq_handler() {
   Kernel::StaticSysTimer::Get()->Tick();
 
   auto scheduler = Kernel::StaticScheduler::Get();
@@ -195,25 +188,8 @@ void c_irq_handler() {
   LOG(INFO) << "Switch: " << ((current) ? current->Name() : "Null") << " -> "
             << ((next) ? next->Name() : "Null");
 
-  register uint64_t x0 asm("x0");
-  register kernel::scheduler::Process::Context* x1 asm("x1");
-  register kernel::scheduler::Process::Context* x2 asm("x2");
-
   bool switch_context = (current != next);
-  kernel::scheduler::Process::Context* current_context = nullptr;
-  kernel::scheduler::Process::Context* next_context = nullptr;
-
-  if (current) {
-    current_context = current->GetContext();
-  }
-
-  if (next) {
-    next_context = next->GetContext();
-  }
-
-  x0 = switch_context;
-  x1 = current_context;
-  x2 = next_context;
+  return switch_context;
 }
 
 void KernelEntry() {
