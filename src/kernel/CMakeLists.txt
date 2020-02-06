@@ -19,6 +19,9 @@ set(SOURCE ${SOURCE}
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/page_pool.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/memory.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/memory.cc
+	
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduler/process.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduler/process.cc
 
   ${CMAKE_CURRENT_SOURCE_DIR}/kernel.h
   ${CMAKE_CURRENT_SOURCE_DIR}/kernel.cc

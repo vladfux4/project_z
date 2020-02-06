@@ -1,6 +1,8 @@
 #ifndef KERNEL_UTILS_STATIC_WRAPPER_H_
 #define KERNEL_UTILS_STATIC_WRAPPER_H_
 
+#include <cassert>
+
 namespace utils {
 
 template <typename Type>
@@ -13,14 +15,17 @@ class StaticWrapper {
   StaticWrapper(StaticWrapper&&) = delete;
   StaticWrapper& operator=(const StaticWrapper&) = delete;
 
-  static void Init(Type& obj) {
+  static void Make(Type& obj) {
     Pointer& storage = Storage();
-    if (storage == nullptr) {
-      storage = &obj;
-    }
+    assert(storage == nullptr);
+    storage = &obj;
   }
 
-  static Pointer Get() { return Storage(); }
+  static Type& Value() {
+    Pointer ret_val = Storage();
+    assert(ret_val != nullptr);
+    return *ret_val;
+  }
 
  private:
   static Pointer& Storage() {

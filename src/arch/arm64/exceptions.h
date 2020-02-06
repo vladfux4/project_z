@@ -14,53 +14,32 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =============================================================================*/
-#ifndef ARCH_ARM64_MM_MMU_H_
-#define ARCH_ARM64_MM_MMU_H_
+#ifndef ARCH_ARM64_EXCEPTIONS_H_
+#define ARCH_ARM64_EXCEPTIONS_H_
 
-#include "arch/arm64/mm/tcr.h"
+#include <cstdint>
+#include "kernel/utils/static_wrapper.h"
+
+#define KERNEL_EXCEPTION_HANDLE_NONE 0
+#define KERNEL_EXCEPTION_HANDLE_SWITCH_CONTEXT 1
 
 namespace arch {
 namespace arm64 {
-namespace mm {
 
-/**
- * @brief The Memory Management Unit class
- */
-class MMU {
+class Exceptions {
  public:
-  /**
-   * @brief Constructor
-   */
-  MMU();
+  using StaticInterface = utils::StaticWrapper<Exceptions>;
 
-  /**
-   * @brief Enable MMU
-   */
-  void Enable();
+  Exceptions();
 
-  inline void SetLowerTable(void* address) { SetTTBR0(address); }
-  inline void SetHigherTable(void* address) { SetTTBR1(address); }
+  uint64_t HandleSync();
+  uint64_t HandleIrq();
 
- private:
-  /**
-   * @brief Set 0 translation table address
-   */
-  __attribute__((always_inline)) void SetTTBR0(void* address) {
-    asm volatile("msr ttbr0_el1, %0" : : "r"(address));
-  }
-
-  /**
-   * @brief Set 1 translation table address
-   */
-  __attribute__((always_inline)) void SetTTBR1(void* address) {
-    asm volatile("msr ttbr1_el1, %0" : : "r"(address));
-  }
-
-  tcr::TcrRegister tcr_;
+  void EnableIrq();
+  void DisableIrq();
 };
 
-}  // namespace mm
 }  // namespace arm64
 }  // namespace arch
 
-#endif  // ARCH_ARM64_MM_MMU_H_
+#endif  // ARCH_ARM64_EXCEPTIONS_H_

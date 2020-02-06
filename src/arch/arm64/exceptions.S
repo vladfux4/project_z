@@ -19,17 +19,7 @@ hang:
   wfi
   b     hang
 
-.globl enable_irq
-enable_irq:
-  msr   daifclr, #2
-  ret
-
-.globl disable_irq
-disable_irq:
-  msr   daifset, #2
-  ret
-
-.macro _exception_entry
+.macro exception_entry
   stp  x29, x30, [sp, #-16]!
   stp  x27, x28, [sp, #-16]!
   stp  x25, x26, [sp, #-16]!
@@ -81,12 +71,8 @@ _exception_exit:
   eret
 
 _switch_context:
-  cbnz x0, 1f
-  b  _exception_exit
-1:
-  bl  kernel_context_current
+  bl  kernel_get_current_context
   cbz x0, _load_context
-
 _save_context:
   mov x28, x0
   add x28, x28, #8 // skip tt
@@ -131,7 +117,7 @@ _save_context:
   stp  x9, x10, [x28],#16
 
 _load_context:
-  bl  kernel_context_to_switch
+  bl  kernel_get_context_to_switch
   mov x30, x0
 
   ldr  x9, [x30],#8
@@ -160,30 +146,33 @@ _load_context:
   ldp  x25, x26, [x30],#16
   ldp  x27, x28, [x30],#16
   ldp  x29, x30, [x30]
-/* msr SPSel, #0*/
   eret
+	
+exception_exit:
+  cbnz x0, _switch_context
+  b  _exception_exit
 
 .align  11
-.globl  vectors
-vectors:
+.globl  exception_vectors
+exception_vectors:
 .balign 128
   b hang
 .balign 128
-  _exception_entry
-  bl  c_irq_handler
-  b  _switch_context
+  exception_entry
+  bl c_irq_handler
+  b exception_exit
 .balign 128
   b hang
 .balign 128
   b hang
 .balign 128
-  _exception_entry
-  bl  c_sync_handler
-  b  _switch_context
+  exception_entry
+  bl c_sync_handler
+  b exception_exit
 .balign 128
-  _exception_entry
-  bl  c_irq_handler
-  b  _switch_context
+  exception_entry
+  bl c_irq_handler
+  b exception_exit
 .balign 128
   b hang
 .balign 128

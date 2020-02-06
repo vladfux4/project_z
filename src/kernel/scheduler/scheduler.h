@@ -37,20 +37,11 @@ class Scheduler {
       const char* name, Process::Function func) {
     auto space = memory_.CreateVirtualAddressSpace();
 
-    auto stack_page =
-        space->MapNewPage(reinterpret_cast<void*>(Process::kStackStart));
+    auto stack_page = space->MapNewPage(reinterpret_cast<void*>(
+        Process::kStackStart -
+        mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes));
     LOG(DEBUG) << "Stack page allocation at: " << stack_page;
-    auto stack_ptr = reinterpret_cast<void*>(
-        Process::kStackStart +
-        mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes);
-
-    //    auto stack_page =
-    //    mm::PhysicalAllocator<mm::Page<mm::KERNEL_PAGE_SIZE>>::Allocate();
-    //    LOG(DEBUG) << "Stack page allocation: " << stack_page;
-    //    auto stack_ptr =
-    //    reinterpret_cast<void*>(reinterpret_cast<size_t>(stack_page)
-    //                         +
-    //                         mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes);
+    auto stack_ptr = reinterpret_cast<void*>(Process::kStackStart);
 
     auto process = mm::UniquePointer<Process, mm::PhysicalAllocator>::Make(
         std::move(space), name, func, stack_ptr);
@@ -90,12 +81,9 @@ class Scheduler {
     current_process_ = next_process_;
     next_process_ = &process;
 
-    //    memory_.Select(process.AddressSpace());
-
-    //    asm volatile("msr sp_el0, %0" : : "r"(Process::kStackStart));
-    //    asm volatile("msr     SPSel, 0");
-    //    process.Exec();
-    //    asm volatile("msr     SPSel, 1");
+    LOG(INFO) << "Switch: "
+              << ((current_process_) ? current_process_->Name() : "Null")
+              << " ->" << ((next_process_) ? next_process_->Name() : "Null");
   }
 
   Process* CurrentProcess() { return current_process_; }

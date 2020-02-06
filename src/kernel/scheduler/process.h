@@ -25,76 +25,24 @@ GNU General Public License for more details.
 #include "kernel/mm/memory.h"
 #include "kernel/mm/unique_ptr.h"
 
+#include "arch/arm64/context.h"
+#include "arch/arm64/system.h"
+
 namespace kernel {
 namespace scheduler {
 
 class Process {
  public:
+  using Context = arch::arm64::Context;
   using Function = void (*)();
 
-  struct Context {
-    struct Registers {
-      uint64_t x0;
-      uint64_t x1;
-      uint64_t x2;
-      uint64_t x3;
-      uint64_t x4;
-      uint64_t x5;
-      uint64_t x6;
-      uint64_t x7;
-      uint64_t x8;
-      uint64_t x9;
-      uint64_t x10;
-      uint64_t x11;
-      uint64_t x12;
-      uint64_t x13;
-      uint64_t x14;
-      uint64_t x15;
-      uint64_t x16;
-      uint64_t x17;
-      uint64_t x18;
-      uint64_t x19;
-      uint64_t x20;
-      uint64_t x21;
-      uint64_t x22;
-      uint64_t x23;
-      uint64_t x24;
-      uint64_t x25;
-      uint64_t x26;
-      uint64_t x27;
-      uint64_t x28;
-      uint64_t x29;
-      uint64_t x30;
-    };
-
-    void* translation_table;
-    Function elr;
-    uint64_t spsr;
-    void* sp;
-    Registers registers;
-  };
-
-  static_assert(sizeof(Context) == ((31 * 8) + (4 * 8)));
-
-  static constexpr auto kStackStart = 0xFFFFFFFFFFF00000;
+  static constexpr auto kStackStart = mm::Memory::VirtualAddressSpace::kEnd;
 
   Process(mm::UniquePointer<mm::Memory::VirtualAddressSpace,
                             mm::PhysicalAllocator>&& space,
-          const char* name, Function func, void* sp)
-      : space_(std::move(space)), func_(func), name_(name) {
-    context_.elr = func;
-    context_.spsr = 0x3C4;
-    context_.registers = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    context_.sp = sp;
-    context_.translation_table = space_->translation_table.GetBase();
+          const char* name, Function func, void* sp);
 
-    LOG(DEBUG) << "SP: " << context_.sp;
-    LOG(DEBUG) << "SPSR: " << context_.spsr;
-    LOG(DEBUG) << "ELR: " << reinterpret_cast<void*>(context_.elr);
-  }
-
-  void Exec() { func_(); }
+  [[noreturn]] void Bootstrap();
 
   const char* Name() { return name_; }
 
@@ -108,7 +56,8 @@ class Process {
 
   Function func_;
   const char* name_;
-public:
+
+ public:
   Context context_;
 };
 

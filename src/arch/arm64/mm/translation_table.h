@@ -316,7 +316,7 @@ class TranslationTable {
                  const EntryParameters& param) {
     using Entry = typename Table::template EntryItem<kLvl>;
     auto entry = Entry();
-    
+
     entry.Set(typename Entry::EntryType(entry_type),
               typename Entry::Address(address),
               typename Entry::MemoryAttr(param.mem_attr),
@@ -336,6 +336,15 @@ class TranslationTable {
 
  private:
   Table* root_table_;
+};
+
+template <size_t kAddressLength>
+struct AddressSpaceInfo {
+  static constexpr size_t kLowerStart = 0;
+  static constexpr size_t kLowerEnd = kLowerStart + (1ULL << kAddressLength);
+
+  static constexpr size_t kHigherStart = 0xFFFF000000000000;
+  static constexpr size_t kHigherEnd = 0xFFFFFFFFFFFFF000;
 };
 
 }  // namespace mm

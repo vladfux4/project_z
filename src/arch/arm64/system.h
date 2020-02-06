@@ -135,6 +135,64 @@ struct SystemControlRegister
   void FlushToEl1() { asm volatile("msr sctlr_el1, %0" : : "r"(value)); }
 };
 
+enum class ExecutionState : uint8_t {
+  A_ARCH_64 = 0,
+  A_ARCH_32 = 1,
+};
+
+enum class ExceptionLevel : uint8_t {
+  EL0_T = 0b0000,
+  EL1_T = 0b0100,
+  EL1_H = 0b0101,
+};
+
+struct SavedProcessStatusRegister
+    : public utils::rtr::Register<
+          SavedProcessStatusRegister, uint64_t,
+          utils::rtr::Field<ExceptionLevel, 4>,  // @0-3 M[3:0] - Mode or
+                                                 // Exception level that an
+                                                 // exception was taken from.
+
+          utils::rtr::Field<ExecutionState, 1>,  // @4 M[4] - Execution state
+                                                 // that the exception was taken
+                                                 // from. A value of 0 indicates
+                                                 // AArch64.
+
+          utils::rtr::Field<bool, 1>,  // @5 reserved
+          utils::rtr::Field<bool, 1>,  // @6 F - FIQ mask bit.
+          utils::rtr::Field<bool, 1>,  // @7 I - IRQ mask bit.
+          utils::rtr::Field<bool, 1>,  // @8 A - SError (System Error) mask bit.
+          utils::rtr::Field<bool, 1>,  // @9 D - Process state Debug mask
+
+          utils::rtr::Field<uint16_t, 10>,  // @10-19 reserved
+
+          utils::rtr::Field<bool, 1>,  // @20 IL - Illegal Execution State bit.
+
+          utils::rtr::Field<bool, 1>,  // @21 SS - Software Step. Indicates
+                                       // whether software step was enabled when
+                                       // an exception was taken.
+
+          utils::rtr::Field<uint8_t, 6>,  // @22-27 reserved
+
+          utils::rtr::Field<bool, 1>,  // @28 V - Overflow (V flag).
+          utils::rtr::Field<bool, 1>,  // @29 C - Carry out (C flag).
+          utils::rtr::Field<bool, 1>,  // @30 Z - Zero result (Z) flag.
+          utils::rtr::Field<bool, 1>   // @31 N - Negative result (N flag).
+          > {
+  using M_LEVEL = FieldAlias<0>;
+  using M_STATE = FieldAlias<1>;
+  using F = FieldAlias<3>;
+  using I = FieldAlias<4>;
+  using A = FieldAlias<5>;
+  using D = FieldAlias<6>;
+  using IL = FieldAlias<8>;
+  using SS = FieldAlias<9>;
+  using V = FieldAlias<11>;
+  using C = FieldAlias<12>;
+  using Z = FieldAlias<13>;
+  using N = FieldAlias<14>;
+};
+
 }  // namespace sys
 }  // namespace arm64
 }  // namespace arch

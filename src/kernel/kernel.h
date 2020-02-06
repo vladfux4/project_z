@@ -17,20 +17,18 @@ GNU General Public License for more details.
 #ifndef KERNEL_KERNEL_H_
 #define KERNEL_KERNEL_H_
 
+#include "arch/arm64/exceptions.h"
 #include "arch/arm64/timer.h"
+
 #include "kernel/mm/memory.h"
 #include "kernel/scheduler/scheduler.h"
 #include "kernel/utils/static_wrapper.h"
 
 namespace kernel {
 
+template <class Handler>
 class Supervisor {
  public:
-  class Handler {
-   public:
-    virtual void HandleSvc() = 0;
-  };
-
   Supervisor(Handler& handler) : handler_(handler) {}
 
   void Handle() { handler_.HandleSvc(); }
@@ -42,11 +40,13 @@ class Supervisor {
 /**
  * @brief The Routine class
  */
-class Kernel : public arch::arm64::Timer::Handler, public Supervisor::Handler {
+class Kernel : public arch::arm64::Timer::Handler {
  public:
   using StaticScheduler = utils::StaticWrapper<scheduler::Scheduler>;
   using StaticSysTimer = utils::StaticWrapper<arch::arm64::Timer>;
-  using StaticSuperviser = utils::StaticWrapper<Supervisor>;
+
+  using KernelSupervisor = Supervisor<Kernel>;
+  using StaticSupervisor = utils::StaticWrapper<KernelSupervisor>;
 
   /**
    * @brief Constructor
@@ -59,7 +59,7 @@ class Kernel : public arch::arm64::Timer::Handler, public Supervisor::Handler {
   void Routine();
 
   void HandleTimer() override;
-  void HandleSvc() override;
+  void HandleSvc();
 
   /**
    * @brief Destructor
@@ -72,10 +72,11 @@ class Kernel : public arch::arm64::Timer::Handler, public Supervisor::Handler {
    */
   void Init();
 
+  arch::arm64::Exceptions exceptions_;
   mm::Memory memory_;
   scheduler::Scheduler scheduler_;
   arch::arm64::Timer sys_timer_;
-  Supervisor superviser_;
+  KernelSupervisor supervisor_;
 };
 
 }  // namespace kernel

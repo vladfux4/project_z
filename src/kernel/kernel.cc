@@ -43,14 +43,9 @@ __attribute__((__noreturn__)) void __assert_func(const char*, int, const char*,
   while (true) {
   }
 }
-
-extern uint8_t vectors;
-extern void enable_irq(void);
-extern void disable_irq(void);
 }
 
 void Function_1() {
-  enable_irq();
   static uint64_t a = 0;
 
   while (true) {
@@ -66,8 +61,6 @@ void Function_1() {
 }
 
 void Function_2() {
-  enable_irq();
-
   while (true) {
     static uint64_t a = 0;
 
@@ -90,10 +83,14 @@ namespace kernel {
 static uint8_t __attribute__((aligned(4096))) kernel_storage[sizeof(Kernel)];
 
 Kernel::Kernel()
-    : memory_(), scheduler_(memory_), sys_timer_(*this), superviser_(*this) {
-  StaticScheduler::Init(scheduler_);
-  StaticSysTimer::Init(sys_timer_);
-  StaticSuperviser::Init(superviser_);
+    : exceptions_(),
+      memory_(),
+      scheduler_(memory_),
+      sys_timer_(*this),
+      supervisor_(*this) {
+  StaticScheduler::Make(scheduler_);
+  StaticSysTimer::Make(sys_timer_);
+  StaticSupervisor::Make(supervisor_);
 }
 
 Kernel::~Kernel() {}
@@ -116,7 +113,7 @@ void Kernel::Routine() {
 
     scheduler_.enabled = true;
     sys_timer_.Enable();
-    enable_irq();
+    exceptions_.EnableIrq();
 
     asm("svc #0");
 
@@ -140,59 +137,20 @@ void Kernel::Routine() {
 }
 
 void Kernel::HandleTimer() {
-  enable_irq();
+  exceptions_.EnableIrq();
   scheduler_.Tick();
-  disable_irq();
+  exceptions_.DisableIrq();
 }
 
 void Kernel::HandleSvc() { scheduler_.Tick(); }
 
-void Kernel::Init() {
-  asm volatile("msr	vbar_el1, %0" : : "r"(&vectors));
-  log::InitPrint();
-  memory_.Init();
-}
+void Kernel::Init() { memory_.Init(); }
 
 extern "C" {
 
-kernel::scheduler::Process::Context* kernel_context_current() {
-  auto* process = Kernel::StaticScheduler::Get()->CurrentProcess();
-  return (process == nullptr) ? nullptr : process->GetContext();
-}
-
-kernel::scheduler::Process::Context* kernel_context_to_switch() {
-  auto* process = Kernel::StaticScheduler::Get()->ProcessToSwitch();
-  return (process == nullptr) ? nullptr : process->GetContext();
-}
-
-bool c_sync_handler() {
-  LOG(INFO) << "SVC";
-  Kernel::StaticSuperviser::Get()->Handle();
-
-  auto scheduler = Kernel::StaticScheduler::Get();
-  auto current = scheduler->CurrentProcess();
-  auto next = scheduler->ProcessToSwitch();
-  LOG(INFO) << "Switch: " << ((current) ? current->Name() : "Null") << " -> "
-            << ((next) ? next->Name() : "Null");
-
-  bool switch_context = (current != next);
-  return switch_context;
-}
-
-bool c_irq_handler() {
-  Kernel::StaticSysTimer::Get()->Tick();
-
-  auto scheduler = Kernel::StaticScheduler::Get();
-  auto current = scheduler->CurrentProcess();
-  auto next = scheduler->ProcessToSwitch();
-  LOG(INFO) << "Switch: " << ((current) ? current->Name() : "Null") << " -> "
-            << ((next) ? next->Name() : "Null");
-
-  bool switch_context = (current != next);
-  return switch_context;
-}
-
 void KernelEntry() {
+  log::InitPrint();
+
   auto kernel = new (reinterpret_cast<Kernel*>(kernel_storage)) Kernel();
   kernel->Routine();
 }

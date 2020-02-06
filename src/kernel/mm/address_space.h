@@ -26,11 +26,20 @@ class AddressSpace {
         address, reinterpret_cast<void*>(page),
         {TranslationTable::BlockSize::_4KB, MemoryAttr::NORMAL, S2AP::NORMAL,
          SH::INNER_SHAREABLE, AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
-		return page;
+    return page;
   }
 
   TranslationTable translation_table;
-};  // namespace mm
+};
+
+template <template <class, size_t> class AllocatorBase>
+class VirtualAddressSpaceBase : public AddressSpace<AllocatorBase> {
+ public:
+  using Info = arch::arm64::mm::AddressSpaceInfo<KERNEL_ADDRESS_LENGTH>;
+
+  static constexpr size_t kStart = Info::kHigherStart;
+  static constexpr size_t kEnd = Info::kHigherEnd;
+};
 
 }  // namespace mm
 }  // namespace kernel

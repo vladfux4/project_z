@@ -33,7 +33,7 @@ namespace mm {
 
 class Memory {
  public:
-  using VirtualAddressSpace = AddressSpace<PhysicalAllocator>;
+  using VirtualAddressSpace = VirtualAddressSpaceBase<PhysicalAllocator>;
 
   Memory();
   ~Memory();
