@@ -338,13 +338,33 @@ class TranslationTable {
   Table* root_table_;
 };
 
-template <size_t kAddressLength>
-struct AddressSpaceInfo {
+template <kernel::mm::PageSize kPageSize, std::size_t kAddressLength,
+          template <class, size_t> class AllocatorBase>
+class AddressSpace {
+ public:
+  using TranslationTable =
+      arch::arm64::mm::TranslationTable<kPageSize, kAddressLength,
+                                        AllocatorBase>;
+
+  TranslationTable translation_table;
+};
+
+template <kernel::mm::PageSize kPageSize, std::size_t kAddressLength,
+          template <class, size_t> class AllocatorBase>
+class PhysicalAddressSpace
+    : public AddressSpace<kPageSize, kAddressLength, AllocatorBase> {
+ public:
   static constexpr size_t kLowerStart = 0;
   static constexpr size_t kLowerEnd = kLowerStart + (1ULL << kAddressLength);
+};
 
-  static constexpr size_t kHigherStart = 0xFFFF000000000000;
-  static constexpr size_t kHigherEnd = 0xFFFFFFFFFFFFF000;
+template <kernel::mm::PageSize kPageSize, std::size_t kAddressLength,
+          template <class, size_t> class AllocatorBase>
+class VirtualAddressSpace
+    : public AddressSpace<kPageSize, kAddressLength, AllocatorBase> {
+ public:
+  static constexpr size_t kStart = 0xFFFFFF8000000000;
+  static constexpr size_t kEnd = 0xFFFFFFFFFFFFF000;
 };
 
 }  // namespace mm

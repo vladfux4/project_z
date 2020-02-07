@@ -46,8 +46,10 @@ class Memory {
   CreateVirtualAddressSpace();
 
  private:
+  using PhysicalAddressSpace = PhysicalAddressSpaceBase<BootAllocator>;
+
   arch::mm::MMU mmu_;
-  AddressSpace<BootAllocator> p_space_;
+  PhysicalAddressSpace p_space_;
 };
 
 }  // namespace mm

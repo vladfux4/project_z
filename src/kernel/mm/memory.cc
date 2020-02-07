@@ -25,7 +25,7 @@ Memory::~Memory() {}
 
 void Memory::Init() {
   using namespace arch::arm64::mm;
-  using TranslationTable = AddressSpace<BootAllocator>::TranslationTable;
+  using TranslationTable = PhysicalAddressSpace::TranslationTable;
 
   size_t base = 0;
   // 880Mb of ram

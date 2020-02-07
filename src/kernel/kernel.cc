@@ -50,7 +50,7 @@ void Function_1() {
 
   while (true) {
     uint64_t* v_ptr =
-        reinterpret_cast<uint64_t*>(0xFFFFFFFFFFE00050);  // mapped on 0x50
+        reinterpret_cast<uint64_t*>(0xFFFFFF8000000050);  // mapped on 0x50
     *v_ptr = a;
 
     LOG(INFO) << "Process_1 value: " << a;
@@ -65,7 +65,7 @@ void Function_2() {
     static uint64_t a = 0;
 
     uint64_t* v_ptr =
-        reinterpret_cast<uint64_t*>(0xFFFFFFFFEEE00050);  // mapped on 0x50
+        reinterpret_cast<uint64_t*>(0xFFFFFF8000000050);  // mapped on 0x50
     *v_ptr = a;
 
     uint64_t* ptr = reinterpret_cast<uint64_t*>(0x40);
@@ -105,11 +105,11 @@ void Kernel::Routine() {
   {
     auto process_1 = scheduler_.CreateProcess("Process_1", Function_1);
     process_1->AddressSpace().MapNewPage(
-        reinterpret_cast<void*>(0xFFFFFFFFFFE00000));
+        reinterpret_cast<void*>(0xFFFFFF8000000000));
 
     auto process_2 = scheduler_.CreateProcess("Process_2", Function_2);
     process_2->AddressSpace().MapNewPage(
-        reinterpret_cast<void*>(0xFFFFFFFFEEE00050));
+        reinterpret_cast<void*>(0xFFFFFF8000000000));
 
     scheduler_.enabled = true;
     sys_timer_.Enable();

@@ -10,35 +10,30 @@ namespace kernel {
 namespace mm {
 
 template <template <class, size_t> class AllocatorBase>
-class AddressSpace {
+class PhysicalAddressSpaceBase
+    : public arch::arm64::mm::PhysicalAddressSpace<
+          KERNEL_PAGE_SIZE, KERNEL_ADDRESS_LENGTH, AllocatorBase> {};
+
+template <template <class, size_t> class AllocatorBase>
+class VirtualAddressSpaceBase
+    : public arch::arm64::mm::VirtualAddressSpace<
+          KERNEL_PAGE_SIZE, KERNEL_ADDRESS_LENGTH, AllocatorBase> {
  public:
   using PageType = kernel::mm::Page<KERNEL_PAGE_SIZE>;
-  using TranslationTable =
-      arch::arm64::mm::TranslationTable<KERNEL_PAGE_SIZE, KERNEL_ADDRESS_LENGTH,
-                                        AllocatorBase>;
+  using TranslationTable = typename arch::arm64::mm::VirtualAddressSpace<
+      KERNEL_PAGE_SIZE, KERNEL_ADDRESS_LENGTH, AllocatorBase>::TranslationTable;
 
   void* MapNewPage(const void* address) {
     using namespace arch::arm64::mm;
     auto page = PhysicalAllocator<PageType>::Allocate();
     LOG(DEBUG) << "map new page v: " << address << " -> p: " << page;
 
-    translation_table.Map(
+    this->translation_table.Map(
         address, reinterpret_cast<void*>(page),
         {TranslationTable::BlockSize::_4KB, MemoryAttr::NORMAL, S2AP::NORMAL,
          SH::INNER_SHAREABLE, AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
     return page;
   }
-
-  TranslationTable translation_table;
-};
-
-template <template <class, size_t> class AllocatorBase>
-class VirtualAddressSpaceBase : public AddressSpace<AllocatorBase> {
- public:
-  using Info = arch::arm64::mm::AddressSpaceInfo<KERNEL_ADDRESS_LENGTH>;
-
-  static constexpr size_t kStart = Info::kHigherStart;
-  static constexpr size_t kEnd = Info::kHigherEnd;
 };
 
 }  // namespace mm
