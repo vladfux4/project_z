@@ -1,0 +1,102 @@
+@startuml
+
+package arch {
+
+class arch.AddressSpace {
++UpdateTranslationTable
+}
+
+class TableEnty
+class TranslationTable
+TranslationTable "1..*" *-- TableEnty
+
+arch.AddressSpace "1..1" *-- TranslationTable
+
+}
+
+package kernel {
+package memory {
+
+
+class RegionJoint {
+-region : shared_ptr<Region>
+-handle : UnregisterHandle
+-begin : void*
+-attributes : Attributes
+}
+
+class memory.AddressSpace {
+-begin : void*
+-length : uint64_t
+-regions : vector<RegionJoint>
++MapRegion(region : shared_ptr<Region>, begin : void*, attributes : Attributes)
+}
+
+
+memory.AddressSpace *-- RegionJoint
+
+
+class RegionSpacesAccessor {
+  + Handle RegisterAddressSpace()
+  + UnregisterAddressSpace(Handle)
+}
+
+
+class Region {
+#length : uint64_t
+-spaces : RegionSpacesAccessor
++Resize()
++Copy()
+}
+
+class DirectRegion
+class PagedRegion
+
+Region <|-- DirectRegion
+Region <|-- PagedRegion
+
+Region *-- RegionSpacesAccessor
+
+class Page
+PagedRegion *-- Page
+
+class Memory {
++ shared_ptr<Region> CreateRegion()
+}
+
+Memory --> "Create" Region
+
+class PagePool
+
+PagePool --> "Allocate" Page
+Memory *-- PagePool
+
+memory.AddressSpace o-- "1..*" Region
+RegionSpacesAccessor --> "1..*" RegionJoint
+
+memory.AddressSpace *-- arch.AddressSpace
+
+}
+
+package process {
+
+class Process
+class ProcessAddressSpace {
+ -heap : memory::Region
+ -stack : memory::Region
+}
+
+ProcessAddressSpace --|> memory.AddressSpace
+Process *-- ProcessAddressSpace
+
+note bottom of ProcessAddressSpace : Address spaces are unique for each process,\nonly memory regions are sharable
+
+}
+
+}
+
+
+
+
+@enduml
+

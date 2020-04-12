@@ -1,0 +1,45 @@
+@startuml
+
+== Initialization ==
+
+Kernel -> Memory : CreateAddressSpace
+activate Memory
+create AddressSpace
+Memory -> AddressSpace : create
+return AddressSpace
+
+Kernel -> Memory : CreateRegion
+activate Memory
+create Region
+Memory -> Region : create
+return Region
+
+Kernel -> AddressSpace : MapRegion(Region)
+activate AddressSpace
+AddressSpace -> AddressSpace: UpdateTranslationTable
+
+AddressSpace -> Region : RegisterAddressSpace
+activate Region
+return
+return
+
+== Resize region ==
+Kernel -> Region : Resize
+activate Region
+Region -> AddressSpace : UpdateTranslationTable
+activate AddressSpace
+return
+return
+
+== Delete AddressSpace ==
+
+Kernel -> AddressSpace : delete
+activate AddressSpace
+AddressSpace -> Region: UnregisterAddressSpace
+activate Region
+return
+return
+destroy AddressSpace
+
+@enduml
+
