@@ -36,10 +36,10 @@ class Process {
   using Context = arch::arm64::Context;
   using Function = void (*)();
 
-  static constexpr auto kStackStart = mm::Memory::VirtualAddressSpace::kEnd;
+  static constexpr auto kStackStart = 0xFFFFFFFFFFFFF000;
 
-  Process(mm::UniquePointer<mm::Memory::VirtualAddressSpace,
-                            mm::PhysicalAllocator>&& space,
+  Process(mm::UniquePointer<mm::AddressSpace,
+                            mm::SlabAllocator>&& space,
           const char* name, Function func, void* sp);
 
   [[noreturn]] void Bootstrap();
@@ -48,10 +48,10 @@ class Process {
 
   Context* GetContext() { return &context_; }
 
-  mm::Memory::VirtualAddressSpace& AddressSpace() { return *space_; }
+  mm::AddressSpace& AddressSpace() { return *space_; }
 
  private:
-  mm::UniquePointer<mm::Memory::VirtualAddressSpace, mm::PhysicalAllocator>
+  mm::UniquePointer<mm::AddressSpace, mm::SlabAllocator>
       space_;
 
   Function func_;

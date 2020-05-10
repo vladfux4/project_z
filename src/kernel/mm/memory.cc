@@ -19,55 +19,7 @@ GNU General Public License for more details.
 namespace kernel {
 namespace mm {
 
-Memory::Memory() : mmu_(), p_space_() {}
-
-Memory::~Memory() {}
-
-void Memory::Init() {
-  using namespace arch::arm64::mm;
-  using TranslationTable = PhysicalAddressSpace::TranslationTable;
-
-  size_t base = 0;
-  // 880Mb of ram
-  for (; base < 440; base++) {
-    void* address = reinterpret_cast<void*>(base << 21);
-    p_space_.translation_table.Map(
-        address, address,
-        {TranslationTable::BlockSize::_2MB, MemoryAttr::NORMAL, S2AP::NORMAL,
-         SH::INNER_SHAREABLE, AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
-  }
-
-  // VC ram up to 0x3F000000
-  for (; base < 512 - 8; base++) {
-    void* address = reinterpret_cast<void*>(base << 21);
-    p_space_.translation_table.Map(
-        address, address,
-        {TranslationTable::BlockSize::_2MB, MemoryAttr::NORMAL_NC, S2AP::NORMAL,
-         SH::NON_SHAREABLE, AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
-  }
-
-  // 16 MB peripherals at 0x3F000000 - 0x40000000
-  for (; base < 512; base++) {
-    void* address = reinterpret_cast<void*>(base << 21);
-    p_space_.translation_table.Map(
-        address, address,
-        {TranslationTable::BlockSize::_2MB, MemoryAttr::DEVICE_NGNRNE,
-         S2AP::NORMAL, SH::NON_SHAREABLE, AF::IGNORE, Contiguous::OFF,
-         XN::EXECUTE});
-  }
-
-  // 2 MB for mailboxes at 0x40000000
-  void* address = reinterpret_cast<void*>(base << 21);
-  p_space_.translation_table.Map(
-      address, address,
-      {TranslationTable::BlockSize::_2MB, MemoryAttr::DEVICE_NGNRNE,
-       S2AP::NORMAL, SH::NON_SHAREABLE, AF::IGNORE, Contiguous::OFF,
-       XN::EXECUTE});
-
-  mmu_.SetLowerTable(p_space_.translation_table.GetBase());
-
-  mmu_.Enable();
-
+Memory::Memory() : mmu_(), p_space_(nullptr) {
   auto init_begin = BootStack::GetHead();
   LOG(DEBUG) << "pool init begin: " << init_begin;
 
@@ -76,29 +28,79 @@ void Memory::Init() {
   length = length - reinterpret_cast<size_t>(init_begin);
   LOG(DEBUG) << "pool size: " << length;
 
-  PhysicalPagePool::Construct(length);
+  auto page_pool = new (BootAllocator<PagePool>::Allocate()) PagePool(length);
+  StaticPagePool::Make(*page_pool);
 
   // allign the stack end to page size
   auto begin = BootStack::Push(1, PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes);
 
   LOG(DEBUG) << "pool new begin: " << begin;
-  PhysicalPagePool::Get()->SetBeginAddress(begin);
+  StaticPagePool::Value().SetBeginAddress(begin);
 
   // minus new boot stack after pool allocation
   length = length - (reinterpret_cast<size_t>(begin) -
                      reinterpret_cast<size_t>(init_begin));
   LOG(DEBUG) << "pool new size: " << length;
-  PhysicalPagePool::Get()->CutBytes(length);
+  StaticPagePool::Value().CutBytes(length);
+
+  using namespace arch::arm64::mm;
+  using TranslationTable = AddressSpace::TranslationTable;
+
+  p_space_ = AddressSpace::Uptr::Make();
+
+  size_t base = 0;
+  // 880Mb of ram
+  for (; base < 440; base++) {
+    void* address = reinterpret_cast<void*>(base << 21);
+    p_space_->translation_table.Map(
+        address, address,
+        {TranslationTable::BlockSize::_2MB, MemoryAttr::NORMAL, S2AP::NORMAL,
+         SH::INNER_SHAREABLE, AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
+  }
+
+  // VC ram up to 0x3F000000
+  for (; base < 512 - 8; base++) {
+    void* address = reinterpret_cast<void*>(base << 21);
+    p_space_->translation_table.Map(
+        address, address,
+        {TranslationTable::BlockSize::_2MB, MemoryAttr::NORMAL_NC, S2AP::NORMAL,
+         SH::NON_SHAREABLE, AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
+  }
+
+  // 16 MB peripherals at 0x3F000000 - 0x40000000
+  for (; base < 512; base++) {
+    void* address = reinterpret_cast<void*>(base << 21);
+    p_space_->translation_table.Map(
+        address, address,
+        {TranslationTable::BlockSize::_2MB, MemoryAttr::DEVICE_NGNRNE,
+         S2AP::NORMAL, SH::NON_SHAREABLE, AF::IGNORE, Contiguous::OFF,
+         XN::EXECUTE});
+  }
+
+  // 2 MB for mailboxes at 0x40000000
+  void* address = reinterpret_cast<void*>(base << 21);
+  p_space_->translation_table.Map(
+      address, address,
+      {TranslationTable::BlockSize::_2MB, MemoryAttr::DEVICE_NGNRNE,
+       S2AP::NORMAL, SH::NON_SHAREABLE, AF::IGNORE, Contiguous::OFF,
+       XN::EXECUTE});
+
+  mmu_.SetLowerTable(p_space_->translation_table.GetBase());
+
+  mmu_.Enable();
 }
 
-void Memory::Select(Memory::VirtualAddressSpace& space) {
+void Memory::Select(AddressSpace& space) {
   mmu_.SetHigherTable(space.translation_table.GetBase());
 }
 
-mm::UniquePointer<Memory::VirtualAddressSpace, PhysicalAllocator>
-Memory::CreateVirtualAddressSpace() {
-  return mm::UniquePointer<mm::Memory::VirtualAddressSpace,
-                           mm::PhysicalAllocator>::Make();
+PagedRegion::Sptr Memory::CreatePagedRegion(const size_t count) {
+  return PagedRegion::Sptr::Make(count);
+}
+
+AddressSpace::Uptr Memory::CreateAddressSpace()
+{
+  return AddressSpace::Uptr::Make();
 }
 
 }  // namespace mm

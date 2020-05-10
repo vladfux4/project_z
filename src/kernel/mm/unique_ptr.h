@@ -33,13 +33,16 @@ class UniquePointer {
   UniquePointer(UniquePointer&& ptr) : data_(ptr.data_) { ptr.data_ = nullptr; }
 
   ~UniquePointer() {
-    if (data_ != nullptr) {
-      Allocator::Deallocate(data_);
-    }
+    Reset(nullptr);
   }
 
   UniquePointer(UniquePointer const&) = delete;
   UniquePointer& operator=(UniquePointer const&) = delete;
+
+  UniquePointer& operator=(UniquePointer&& ptr) {
+    Reset(ptr.Release());
+    return *this;
+  }
 
   T* operator->() const { return data_; }
   T& operator*() const { return *data_; }
@@ -51,6 +54,16 @@ class UniquePointer {
     T* result = data_;
     data_ = nullptr;
     return result;
+  }
+
+  T* Reset(T* data) {
+    if (data_ != nullptr) {
+      data_->~T();
+      Allocator::Deallocate(data_);
+    }
+
+    data_ = data;
+    return data;
   }
 
   template <typename... Args>

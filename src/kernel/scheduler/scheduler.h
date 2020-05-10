@@ -33,24 +33,24 @@ class Scheduler {
  public:
   Scheduler(mm::Memory& memory) : memory_(memory), process_count_(0) {}
 
-  mm::UniquePointer<Process, mm::PhysicalAllocator> CreateProcess(
-      const char* name, Process::Function func) {
-    auto space = memory_.CreateVirtualAddressSpace();
+//  mm::UniquePointer<Process, mm::SlabAllocator> CreateProcess(
+//      const char* name, Process::Function func) {
+//    auto space = memory_.CreateVirtualAddressSpace();
 
-    auto stack_page = space->MapNewPage(reinterpret_cast<void*>(
-        Process::kStackStart -
-        mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes));
-    LOG(DEBUG) << "Stack page allocation at: " << stack_page;
-    auto stack_ptr = reinterpret_cast<void*>(Process::kStackStart);
+//    auto stack_page = space->MapNewPage(reinterpret_cast<void*>(
+//        Process::kStackStart -
+//        mm::PageSizeInfo<mm::KERNEL_PAGE_SIZE>::in_bytes));
+//    LOG(DEBUG) << "Stack page allocation at: " << stack_page;
+//    auto stack_ptr = reinterpret_cast<void*>(Process::kStackStart);
 
-    auto process = mm::UniquePointer<Process, mm::PhysicalAllocator>::Make(
-        std::move(space), name, func, stack_ptr);
+//    auto process = mm::UniquePointer<Process, mm::SlabAllocator>::Make(
+//        std::move(space), name, func, stack_ptr);
 
-    processes_[process_count_] = process.Get();
-    process_count_++;
+//    processes_[process_count_] = process.Get();
+//    process_count_++;
 
-    return process;
-  }
+//    return process;
+//  }
 
   void Tick() {
     if (enabled) {

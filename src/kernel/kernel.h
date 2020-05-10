@@ -67,16 +67,12 @@ class Kernel : public arch::arm64::Timer::Handler {
   ~Kernel();
 
  private:
-  /**
-   * @brief Init kernel
-   */
-  void Init();
 
   arch::arm64::Exceptions exceptions_;
   mm::Memory memory_;
-  scheduler::Scheduler scheduler_;
-  arch::arm64::Timer sys_timer_;
-  KernelSupervisor supervisor_;
+//  scheduler::Scheduler scheduler_;
+//  arch::arm64::Timer sys_timer_;
+//  KernelSupervisor supervisor_;
 };
 
 }  // namespace kernel

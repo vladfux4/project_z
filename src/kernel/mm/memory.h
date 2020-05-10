@@ -33,23 +33,17 @@ namespace mm {
 
 class Memory {
  public:
-  using VirtualAddressSpace = VirtualAddressSpaceBase<PhysicalAllocator>;
-
   Memory();
-  ~Memory();
 
-  void Init();
+  void Select(AddressSpace& space);
 
-  void Select(VirtualAddressSpace& space);
-
-  mm::UniquePointer<mm::Memory::VirtualAddressSpace, mm::PhysicalAllocator>
-  CreateVirtualAddressSpace();
+  PagedRegion::Sptr CreatePagedRegion(const size_t count);
+  AddressSpace::Uptr CreateAddressSpace();
 
  private:
-  using PhysicalAddressSpace = PhysicalAddressSpaceBase<BootAllocator>;
 
   arch::mm::MMU mmu_;
-  PhysicalAddressSpace p_space_;
+  AddressSpace::Uptr p_space_;
 };
 
 }  // namespace mm

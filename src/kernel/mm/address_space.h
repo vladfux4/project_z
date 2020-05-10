@@ -5,34 +5,33 @@
 #include "kernel/config.h"
 #include "kernel/logger.h"
 #include "kernel/mm/physical_allocator.h"
+#include "kernel/mm/region.h"
+#include "kernel/mm/unique_ptr.h"
 
 namespace kernel {
 namespace mm {
 
-template <template <class, size_t> class AllocatorBase>
-class PhysicalAddressSpaceBase
-    : public arch::arm64::mm::PhysicalAddressSpace<
-          KERNEL_PAGE_SIZE, KERNEL_ADDRESS_LENGTH, AllocatorBase> {};
-
-template <template <class, size_t> class AllocatorBase>
-class VirtualAddressSpaceBase
-    : public arch::arm64::mm::VirtualAddressSpace<
-          KERNEL_PAGE_SIZE, KERNEL_ADDRESS_LENGTH, AllocatorBase> {
+class AddressSpace : public arch::arm64::mm::AddressSpace {
  public:
-  using PageType = kernel::mm::Page<KERNEL_PAGE_SIZE>;
-  using TranslationTable = typename arch::arm64::mm::VirtualAddressSpace<
-      KERNEL_PAGE_SIZE, KERNEL_ADDRESS_LENGTH, AllocatorBase>::TranslationTable;
+  using Uptr = kernel::mm::UniquePointer<AddressSpace, SlabAllocator>;
 
-  void* MapNewPage(const void* address) {
-    using namespace arch::arm64::mm;
-    auto page = PhysicalAllocator<PageType>::Allocate();
-    LOG(DEBUG) << "map new page v: " << address << " -> p: " << page;
+  void MapRegion(void* begin, PagedRegion::Sptr region, const Region::Attributes& attr) {
+    auto& pages = region->Pages();
+    auto address = reinterpret_cast<PagedRegion::Page*>(begin);
+    for (auto it = pages.Begin(); it != pages.End(); it++, address++) {
+      LOG(DEBUG) << "map page v: " << address << " -> p: " << it.Value();
 
-    this->translation_table.Map(
-        address, reinterpret_cast<void*>(page),
-        {TranslationTable::BlockSize::_4KB, MemoryAttr::NORMAL, S2AP::NORMAL,
-         SH::INNER_SHAREABLE, AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
-    return page;
+      TranslationTable::EntryParameters params = {
+        AddressSpace::TranslationTable::BlockSize::_4KB,
+        attr.mem_attr,
+        attr.s2ap,
+        attr.sh,
+        attr.af,
+        attr.contiguous,
+        attr.xn
+      };
+      translation_table.Map(address, reinterpret_cast<void*>(it.Value()), params);
+    }
   }
 };
 

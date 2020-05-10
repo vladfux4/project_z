@@ -28,6 +28,9 @@ GNU General Public License for more details.
 #include "kernel/utils/enum_iterator.h"
 #include "kernel/utils/variant.h"
 
+#include "kernel/config.h"
+#include "kernel/mm/physical_allocator.h"
+
 namespace arch {
 namespace arm64 {
 namespace mm {
@@ -235,9 +238,9 @@ class TranslationTable {
       auto type = Get<typename Table::TableItem::EntryType>(item);
       void* next_item = item.GetAddress();
 
-      LOG(VERBOSE) << "Found table item: " << next_item
-                   << " type: " << static_cast<uint64_t>(type)
-                   << " level: " << static_cast<size_t>(level);
+//      LOG(VERBOSE) << "Found table item: " << next_item
+//                   << " type: " << static_cast<uint64_t>(type)
+//                   << " level: " << static_cast<size_t>(level);
       if (type == EntryType::TABLE) {
         if (level != LookupLevel::_1) {
           auto next_level = utils::EnumIterator<LookupLevel, 0>(level);
@@ -246,7 +249,8 @@ class TranslationTable {
           DeallocTable(*next_level_table, next_level.Value());
           TableAllocator::Deallocate(next_level_table);
         } else {
-          PageAllocator::Deallocate(reinterpret_cast<Page*>(next_item));
+//          Pages are now deallocated by kernel::memory::Region
+//          PageAllocator::Deallocate(reinterpret_cast<Page*>(next_item));
         }
       }
     }
@@ -338,33 +342,12 @@ class TranslationTable {
   Table* root_table_;
 };
 
-template <kernel::mm::PageSize kPageSize, std::size_t kAddressLength,
-          template <class, size_t> class AllocatorBase>
 class AddressSpace {
  public:
   using TranslationTable =
-      arch::arm64::mm::TranslationTable<kPageSize, kAddressLength,
-                                        AllocatorBase>;
-
+      arch::arm64::mm::TranslationTable<kernel::mm::KERNEL_PAGE_SIZE, kernel::mm::KERNEL_ADDRESS_LENGTH,
+                                        kernel::mm::SlabAllocator>;
   TranslationTable translation_table;
-};
-
-template <kernel::mm::PageSize kPageSize, std::size_t kAddressLength,
-          template <class, size_t> class AllocatorBase>
-class PhysicalAddressSpace
-    : public AddressSpace<kPageSize, kAddressLength, AllocatorBase> {
- public:
-  static constexpr size_t kLowerStart = 0;
-  static constexpr size_t kLowerEnd = kLowerStart + (1ULL << kAddressLength);
-};
-
-template <kernel::mm::PageSize kPageSize, std::size_t kAddressLength,
-          template <class, size_t> class AllocatorBase>
-class VirtualAddressSpace
-    : public AddressSpace<kPageSize, kAddressLength, AllocatorBase> {
- public:
-  static constexpr size_t kStart = 0xFFFFFF8000000000;
-  static constexpr size_t kEnd = 0xFFFFFFFFFFFFF000;
 };
 
 }  // namespace mm

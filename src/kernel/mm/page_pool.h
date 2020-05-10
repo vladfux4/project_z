@@ -24,6 +24,7 @@ GNU General Public License for more details.
 #include "kernel/config.h"
 #include "kernel/mm/boot_allocator.h"
 #include "kernel/mm/pool.h"
+#include "kernel/utils/static_wrapper.h"
 
 namespace kernel {
 namespace mm {
@@ -38,61 +39,51 @@ class PagePool : public Pool<PageInfo, size_t, BootAllocator> {
     return (bytes / PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes);
   }
 
-  PagePool(const size_t length) : Pool(GetPageCount(length)) {}
-
   void CutBytes(const size_t length) { Pool::Cut(GetPageCount(length)); }
-};
-
-class PhysicalPagePool : public PagePool {
- public:
-  static void Construct(const size_t length) {
-    static bool create = true;
-    if (create) {
-      ref_ = BootAllocator<PhysicalPagePool>::Allocate();
-      new (ref_) PhysicalPagePool(length);
-      create = false;
-    }
-  }
-
-  static PhysicalPagePool* Get() { return ref_; }
 
   uint8_t* BeginAddress() { return begin_; }
   void SetBeginAddress(uint8_t* address) { begin_ = address; }
 
- private:
-  PhysicalPagePool(const size_t length) : PagePool(length), begin_(nullptr) {}
+  PagePool(const size_t length) : Pool(GetPageCount(length)), begin_(nullptr) {}
 
-  static PhysicalPagePool* ref_;
+  void LogInfo() {
+    LOG(VERBOSE) << "Free: " << FreeSlots();
+    LOG(VERBOSE) << "Used pages: " << (Size() - FreeSlots());
+  }
 
   uint8_t* begin_;
 };
 
+using StaticPagePool = utils::StaticWrapper<PagePool>;
+
 template <typename T, size_t kAlignment = 0>
-struct PhysicalPagePoolAllocator {
+struct PagePoolAllocator {
   static_assert(sizeof(T) <= PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes);
 
   static T* Allocate() {
-    auto pool = PhysicalPagePool::Get();
-    auto info = pool->Allocate();
-    auto index = pool->ToIndex(info);
-    uint8_t* address = pool->BeginAddress() +
+    auto& pool = StaticPagePool::Value();
+    auto info = pool.Allocate();
+    auto index = pool.ToIndex(info);
+    uint8_t* address = pool.BeginAddress() +
                        (PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes * index);
 
-    LOG(VERBOSE) << "PhysicalPage alloc index: " << index
+    LOG(VERBOSE) << "Alloc index: " << index
                  << " address:" << address;
     return reinterpret_cast<T*>(address);
   }
 
   static void Deallocate(T* address) {
-    auto pool = PhysicalPagePool::Get();
-    auto index = ((reinterpret_cast<uint8_t*>(address) - pool->BeginAddress()) /
+    auto& pool = StaticPagePool::Value();
+    auto index = ((reinterpret_cast<uint8_t*>(address) - pool.BeginAddress()) /
                   PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes);
 
     address->~T();
-    LOG(VERBOSE) << "PhysicalPage dealloc index: " << index
+    LOG(VERBOSE) << "Dealloc index: " << index
                  << " address:" << address;
-    pool->DeallocateByIndex(index);
+    pool.DeallocateByIndex(index);
   }
+
+ private:
 };
 
 }  // namespace mm

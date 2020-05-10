@@ -92,7 +92,7 @@ TEST_F(PoolTest, Updates) {
 
   CheckContent();
 
-  for (size_t i = 0; i < pool.FreeItems(); ++i) {
+  for (size_t i = 0; i < pool.FreeSlots(); ++i) {
     New();
   }
 

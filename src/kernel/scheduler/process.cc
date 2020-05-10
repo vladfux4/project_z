@@ -25,8 +25,8 @@ extern "C" {
 [[noreturn]] void ProcessBootstrap(Process* process) { process->Bootstrap(); }
 }
 
-Process::Process(mm::UniquePointer<mm::Memory::VirtualAddressSpace,
-                                   mm::PhysicalAllocator>&& space,
+Process::Process(mm::UniquePointer<mm::AddressSpace,
+                                   mm::SlabAllocator>&& space,
                  const char* name, Function func, void* sp)
     : space_(std::move(space)), func_(func), name_(name) {
   constexpr auto spsr = Context::Spsr::MakeValue(

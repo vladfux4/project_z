@@ -27,16 +27,87 @@ namespace kernel {
 namespace mm {
 
 template <typename T, size_t kAlignment>
-struct PhysicalSlabAllocator {  /// TODO Implement slab mechanism
-  using PagePoolAllocator = PhysicalPagePoolAllocator<T, kAlignment>;
-  static T* Allocate() { return PagePoolAllocator::Allocate(); }
-  static void Deallocate(T* address) { PagePoolAllocator::Deallocate(address); }
+struct PageSlabAllocator {
+ public:
+  struct Node {
+    using Index = std::size_t;
+    static constexpr Index kPageSize = PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes;
+    static constexpr Index kPoolBufferSize = (kPageSize - sizeof (Node*));
+    static constexpr Index kPoolSize = StaticPoolSize<Index, T>::ForBuffer(kPoolBufferSize);
+
+    Node() : next(nullptr), pool() {}
+
+    Node* next;
+    StaticPool<T, kPoolSize, Index> pool;
+  };
+  static_assert (sizeof (Node) <= Node::kPageSize);
+
+  static T* Allocate() {
+    if (!root_) {
+      root_ = new (PagePoolAllocator<Node>::Allocate()) Node();
+      LOG(VERBOSE) << "Alloc root: " << root_ << " type size: " << sizeof (T);
+    }
+
+    Node* node = root_;
+    while (node != nullptr) {
+      if (0 != node->pool.FreeSlots()) {
+        return node->pool.Allocate();
+      }
+
+      if (node->next == nullptr) {
+        node->next = new (PagePoolAllocator<Node>::Allocate()) Node();
+        node = node->next;
+      }
+    }
+
+    return nullptr;
+  }
+
+  static void Deallocate(T* address) {
+    Node* prev = nullptr;
+    Node* node = root_;
+
+    while (node != nullptr) {
+      if (node->pool.IsRelated(address)) {
+        node->pool.Deallocate(address);
+
+        if (node->pool.Empty()) {
+          if (prev != nullptr) {
+            prev->next = node->next;
+          } else {
+            root_ = node->next;
+          }
+
+          node->~Node();
+          PagePoolAllocator<Node>::Deallocate(node);
+        }
+
+        break;
+      } else {
+        prev = node;
+        node = node->next;
+      }
+    }
+  }
+
+ private:
+  static Node* root_;
 };
+
+template <typename T, size_t kAlignment>
+typename PageSlabAllocator<T, kAlignment>::Node*
+PageSlabAllocator<T, kAlignment>::root_ = nullptr;
 
 template <typename T, typename Spec = void>
 struct AllocatorSelector {
+};
+
+template <typename T>
+struct AllocatorSelector<
+    T,
+    std::enable_if_t<sizeof(T) < PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes>> {
   template <typename ValueType, size_t kValueAlignment>
-  using Type = PhysicalSlabAllocator<ValueType, kValueAlignment>;
+  using Type = PageSlabAllocator<ValueType, kValueAlignment>;
 };
 
 template <typename T>
@@ -44,14 +115,14 @@ struct AllocatorSelector<
     T,
     std::enable_if_t<sizeof(T) == PageSizeInfo<KERNEL_PAGE_SIZE>::in_bytes>> {
   template <typename ValueType, size_t kValueAlignment>
-  using Type = PhysicalPagePoolAllocator<ValueType, kValueAlignment>;
+  using Type = PagePoolAllocator<ValueType, kValueAlignment>;
 };
 
 template <typename T, size_t kAlignment = 0>
-struct PhysicalAllocator : AllocatorSelector<T>::template Type<T, kAlignment> {
+struct SlabAllocator : AllocatorSelector<T>::template Type<T, kAlignment> {
   template <typename... Args>
   static T* Make(Args&&... args) {
-    return new (PhysicalAllocator::Allocate()) T(std::forward<Args>(args)...);
+    return new (SlabAllocator::Allocate()) T(std::forward<Args>(args)...);
   }
 };
 

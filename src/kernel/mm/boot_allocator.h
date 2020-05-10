@@ -36,7 +36,7 @@ class BootAllocator {
   }
 
   static T* Allocate(const size_t n) {
-    LOG(VERBOSE) << "boot_allocator alloc count" << n;
+    LOG(VERBOSE) << "boot_allocator alloc count: " << n;
     return reinterpret_cast<T*>(BootStack::Push((sizeof(T) * n), kAlignment));
   }
 

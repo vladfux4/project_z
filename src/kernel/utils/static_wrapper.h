@@ -2,6 +2,7 @@
 #define KERNEL_UTILS_STATIC_WRAPPER_H_
 
 #include <cassert>
+#include <utility>
 
 namespace utils {
 
@@ -16,23 +17,21 @@ class StaticWrapper {
   StaticWrapper& operator=(const StaticWrapper&) = delete;
 
   static void Make(Type& obj) {
-    Pointer& storage = Storage();
-    assert(storage == nullptr);
-    storage = &obj;
+    assert(ptr_ == nullptr);
+    ptr_ = &obj;
   }
 
   static Type& Value() {
-    Pointer ret_val = Storage();
-    assert(ret_val != nullptr);
-    return *ret_val;
+    assert(ptr_ != nullptr);
+    return *ptr_;
   }
 
  private:
-  static Pointer& Storage() {
-    static Pointer ptr = nullptr;
-    return ptr;
-  }
+  static Pointer ptr_;
 };
+
+template <typename Type>
+typename StaticWrapper<Type>::Pointer StaticWrapper<Type>::ptr_ = nullptr;
 
 }  // namespace utils
 

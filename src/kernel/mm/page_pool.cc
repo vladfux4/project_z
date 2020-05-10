@@ -19,7 +19,5 @@ GNU General Public License for more details.
 namespace kernel {
 namespace mm {
 
-PhysicalPagePool* PhysicalPagePool::ref_ = nullptr;
-
 }  // namespace mm
 }  // namespace kernel

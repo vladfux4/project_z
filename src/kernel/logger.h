@@ -19,7 +19,7 @@ GNU General Public License for more details.
 
 #include <cstdint>
 
-#define __FILENAME__ (__FILE__ + SOURCE_PATH_SIZE)
+#define __FILENAME__ (&__FILE__[SOURCE_PATH_SIZE])
 #define LOG(LEVEL) kernel::log::Logger<kernel::log::Level::LEVEL>(__FILENAME__)
 
 namespace kernel {
