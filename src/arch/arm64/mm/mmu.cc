@@ -71,7 +71,16 @@ void MMU::Enable() {
   asm volatile("isb");
 }
 
-void MMU::SelectAddressSpace(AddressSpace&) {
+void MMU::SelectAddressSpace(AddressSpace& space) {
+  auto lower_table = space.LowerTable();
+  if (lower_table) {
+    SetLowerTable(lower_table->GetBase());
+  }
+
+  auto higher_table = space.HigherTable();
+  if (higher_table) {
+    SetHigherTable(higher_table->GetBase());
+  }
 }
 
 }  // namespace mm

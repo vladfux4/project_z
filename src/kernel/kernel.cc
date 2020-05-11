@@ -127,7 +127,6 @@ void Kernel::Routine() {
     void* ptr = region_1->Pages().Begin().Value();
     LOG(INFO) << "Region first page: " << ptr;
 
-
     address_space_1->MapRegion(reinterpret_cast<void*>(0xFFFFFFFFFFF00000),
                                region_1, attr);
     address_space_2->MapRegion(reinterpret_cast<void*>(0xFFFFFFFFFFF10000),

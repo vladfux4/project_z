@@ -257,7 +257,7 @@ class TranslationTable {
     }
   }
 
-  void* GetBase() { return reinterpret_cast<void*>(root_table_); }
+  void* GetBase() const { return reinterpret_cast<void*>(root_table_); }
 
   void Map(const void* v_ptr, const void* p_ptr, const EntryParameters& param) {
     auto chain_info = CreateTableChain(v_ptr, param.size);

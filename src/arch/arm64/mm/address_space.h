@@ -28,6 +28,7 @@ GNU General Public License for more details.
 #include "kernel/config.h"
 #include "kernel/mm/physical_allocator.h"
 #include "kernel/mm/region.h"
+#include "kernel/mm/unique_ptr.h"
 
 namespace arch {
 namespace arm64 {
@@ -39,88 +40,41 @@ class AddressSpace {
       arch::arm64::mm::TranslationTable<kernel::mm::KERNEL_PAGE_SIZE, kernel::mm::KERNEL_ADDRESS_LENGTH,
                                         kernel::mm::SlabAllocator>;
 
-  void MapRegion(void* begin, kernel::mm::PagedRegion::Sptr& region, const kernel::mm::Region::Attributes& attr) {
-    auto& pages = region->Pages();
-    auto address = reinterpret_cast<kernel::mm::PagedRegion::Page*>(begin);
-    for (auto it = pages.Begin(); it != pages.End(); it++, address++) {
-      LOG(DEBUG) << "map page v: " << address << " -> p: " << it.Value();
+  static constexpr size_t kLowerStart = 0;
+  static constexpr size_t kLowerEnd = (1ULL << kernel::mm::KERNEL_ADDRESS_LENGTH);
+  static constexpr size_t kHigherStart = 0xFFFFFF8000000000;
+  static constexpr size_t kHigherEnd = 0xFFFFFFFFFFFFF000;
 
-      TranslationTable::EntryParameters params = {
-        AddressSpace::TranslationTable::BlockSize::_4KB,
-        attr.mem_attr,
-        attr.s2ap,
-        attr.sh,
-        attr.af,
-        attr.contiguous,
-        attr.xn
-      };
-      translation_table.Map(address, reinterpret_cast<void*>(it.Value()), params);
-    }
+  AddressSpace() : lower_table_(nullptr), higher_table_(nullptr) {}
+
+  void MapRegion(void* begin, kernel::mm::PagedRegion::Sptr& region, const kernel::mm::Region::Attributes& attr);
+  void MapRegion(void* begin, kernel::mm::DirectRegion::Sptr& region, const kernel::mm::Region::Attributes& attr);
+
+  const TranslationTable* LowerTable() const {
+    return lower_table_.Get();
   }
 
-  void MapRegion(void* begin, kernel::mm::DirectRegion::Sptr& region, const kernel::mm::Region::Attributes& attr) {
-    bool valid_region = false;
-    TranslationTable::BlockSize block_size = TranslationTable::BlockSize::_4KB;
-    size_t block_length = 0;
-    size_t count = 0;
-
-    if ((reinterpret_cast<size_t>(region->Begin()) % (1ULL << 12)) != 0) {
-      LOG(ERROR) << "Not alligned region begin address: " << region->Begin();
-      return;
-    }
-
-    if ((region->Length() % (1ULL << 12)) == 0) {
-      block_size = TranslationTable::BlockSize::_4KB;
-      block_length = (1ULL << 12);
-      count = region->Length() / (1ULL << 12);
-      valid_region = true;
-    }
-
-    if ((region->Length() % (1ULL << 21)) == 0) {
-      block_size = TranslationTable::BlockSize::_2MB;
-      block_length = (1ULL << 21);
-      count = region->Length() / (1ULL << 21);
-      valid_region = true;
-    }
-
-    if ((region->Length() % (1ULL << 30)) == 0) {
-      block_size = TranslationTable::BlockSize::_1GB;
-      block_length = (1ULL << 30);
-      count = region->Length() / (1ULL << 30);
-      valid_region = true;
-    }
-
-    if (!valid_region) {
-      LOG(ERROR) << "Wrong region length: " << region->Length();
-      return;
-    }
-
-    for (size_t i = 0; i < count; i++) {
-      const size_t offset = (i * block_length);
-      void* p_address =
-          reinterpret_cast<void*>(
-            offset + reinterpret_cast<size_t>(region->Begin()));
-      void* v_address =
-          reinterpret_cast<void*>(
-            offset + reinterpret_cast<size_t>(begin));
-
-      TranslationTable::EntryParameters params = {
-        block_size,
-        attr.mem_attr,
-        attr.s2ap,
-        attr.sh,
-        attr.af,
-        attr.contiguous,
-        attr.xn
-      };
-
-      translation_table.Map(v_address, p_address, params);
-    }
-
-    LOG(DEBUG) << "map region v: " << begin << " -> p: " << region->Begin();
+  const TranslationTable* HigherTable() const {
+    return higher_table_.Get();
   }
 
-  TranslationTable translation_table;
+ private:
+  using TranslationTableUptr = kernel::mm::UniquePointer<TranslationTable, kernel::mm::SlabAllocator>;
+
+  TranslationTable* ChooseTable(void* address, size_t length);
+
+  TranslationTable* GetLowerTable() { return GetTable(lower_table_); }
+  TranslationTable* GetHigherTable() { return GetTable(higher_table_); }
+
+  TranslationTable* GetTable(TranslationTableUptr& table) {
+    if (!table) {
+      table = TranslationTableUptr::Make();
+    }
+    return table.Get();
+  }
+
+  TranslationTableUptr lower_table_;
+  TranslationTableUptr higher_table_;
 };
 
 }  // namespace mm

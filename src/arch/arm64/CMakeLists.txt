@@ -11,6 +11,7 @@ set(SOURCE ${SOURCE}
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/translation_table.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/mmu.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mm/mmu.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/mm/address_space.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/timer.h
   ${CMAKE_CURRENT_SOURCE_DIR}/timer.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/exceptions.h

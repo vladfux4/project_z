@@ -24,12 +24,12 @@ Memory::Memory() : mmu_(), p_space_(nullptr) {
   InitPagePool();
   InitPhSpace();
 
-  mmu_.SetLowerTable(p_space_->translation_table.GetBase());
+  Select(*p_space_);
   mmu_.Enable();
 }
 
 void Memory::Select(AddressSpace& space) {
-  mmu_.SetHigherTable(space.translation_table.GetBase());
+  mmu_.SelectAddressSpace(space);
 }
 
 PagedRegion::Sptr Memory::CreatePagedRegion(const size_t count) {

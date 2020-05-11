@@ -38,7 +38,7 @@ Process::Process(mm::UniquePointer<mm::AddressSpace,
   context_.registers.x0 = reinterpret_cast<uint64_t>(this);
   context_.elr = reinterpret_cast<void*>(ProcessBootstrap);
   context_.sp = sp;
-  context_.translation_table = space_->translation_table.GetBase();
+//  context_.translation_table = space_->translation_table.GetBase();
 
   LOG(DEBUG) << "SP: " << context_.sp;
   LOG(DEBUG) << "SPSR: " << context_.spsr.value;
