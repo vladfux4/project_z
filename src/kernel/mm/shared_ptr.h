@@ -19,6 +19,7 @@ GNU General Public License for more details.
 
 #include <cstddef>
 #include <utility>
+#include "kernel/logger.h"
 
 namespace kernel {
 namespace mm {
@@ -51,18 +52,24 @@ class SharedPointer {
   template <typename Type>
   using Allocator = AllocatorBase<Type, kAlignment>;
 
-  explicit SharedPointer(T* ptr = nullptr) {
+  SharedPointer() = delete;
+
+  explicit SharedPointer(T* ptr) {
     counter_ = new (Allocator<ReferenceCounter>::Allocate()) ReferenceCounter();
     ptr_ = ptr;
     if (ptr) {
       (*counter_)++;
     }
+
+    LOG(VERBOSE) << "New Sptr: " << ptr_ << " counter: " << counter_;
   }
 
-  SharedPointer(SharedPointer& sp) {
+  SharedPointer(const SharedPointer& sp) {
     ptr_ = sp.ptr_;
     counter_ = sp.counter_;
     (*counter_)++;
+
+    LOG(VERBOSE) << "Copy Sptr: " << ptr_ << " counter: " << counter_->Get();
   }
 
   SharedPointer& operator=(SharedPointer const&) = delete;
@@ -80,6 +87,8 @@ class SharedPointer {
       ptr_->~T();
       Allocator<T>::Deallocate(ptr_);
     }
+
+    LOG(VERBOSE) << "Delete Sptr: " << ptr_ << " count: " << counter_->Get();
   }
 
   template <typename... Args>

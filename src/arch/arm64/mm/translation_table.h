@@ -30,6 +30,7 @@ GNU General Public License for more details.
 
 #include "kernel/config.h"
 #include "kernel/mm/physical_allocator.h"
+#include "kernel/mm/region.h"
 
 namespace arch {
 namespace arm64 {
@@ -340,14 +341,6 @@ class TranslationTable {
 
  private:
   Table* root_table_;
-};
-
-class AddressSpace {
- public:
-  using TranslationTable =
-      arch::arm64::mm::TranslationTable<kernel::mm::KERNEL_PAGE_SIZE, kernel::mm::KERNEL_ADDRESS_LENGTH,
-                                        kernel::mm::SlabAllocator>;
-  TranslationTable translation_table;
 };
 
 }  // namespace mm

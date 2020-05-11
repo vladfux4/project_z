@@ -15,11 +15,38 @@ GNU General Public License for more details.
 
 =============================================================================*/
 #include "kernel/mm/memory.h"
+#include "kernel/mm/region.h"
 
 namespace kernel {
 namespace mm {
 
 Memory::Memory() : mmu_(), p_space_(nullptr) {
+  InitPagePool();
+  InitPhSpace();
+
+  mmu_.SetLowerTable(p_space_->translation_table.GetBase());
+  mmu_.Enable();
+}
+
+void Memory::Select(AddressSpace& space) {
+  mmu_.SetHigherTable(space.translation_table.GetBase());
+}
+
+PagedRegion::Sptr Memory::CreatePagedRegion(const size_t count) {
+  return PagedRegion::Sptr::Make(count);
+}
+
+DirectRegion::Sptr Memory::CreateDirectRegion(void* begin, const size_t length)
+{
+  return DirectRegion::Sptr::Make(begin, length);
+}
+
+AddressSpace::Uptr Memory::CreateAddressSpace()
+{
+  return AddressSpace::Uptr::Make();
+}
+
+void Memory::InitPagePool() {
   auto init_begin = BootStack::GetHead();
   LOG(DEBUG) << "pool init begin: " << init_begin;
 
@@ -42,65 +69,38 @@ Memory::Memory() : mmu_(), p_space_(nullptr) {
                      reinterpret_cast<size_t>(init_begin));
   LOG(DEBUG) << "pool new size: " << length;
   StaticPagePool::Value().CutBytes(length);
+}
 
-  using namespace arch::arm64::mm;
-  using TranslationTable = AddressSpace::TranslationTable;
-
+void Memory::InitPhSpace()
+{
   p_space_ = AddressSpace::Uptr::Make();
+  void* base = nullptr;
+  using namespace arch::arm64::mm;
 
-  size_t base = 0;
   // 880Mb of ram
-  for (; base < 440; base++) {
-    void* address = reinterpret_cast<void*>(base << 21);
-    p_space_->translation_table.Map(
-        address, address,
-        {TranslationTable::BlockSize::_2MB, MemoryAttr::NORMAL, S2AP::NORMAL,
-         SH::INNER_SHAREABLE, AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
-  }
+  auto ram = CreateDirectRegion(base, (880ULL << 20));
+  p_space_->MapRegion(base, ram, {MemoryAttr::NORMAL, S2AP::NORMAL,
+       SH::INNER_SHAREABLE, AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
 
   // VC ram up to 0x3F000000
-  for (; base < 512 - 8; base++) {
-    void* address = reinterpret_cast<void*>(base << 21);
-    p_space_->translation_table.Map(
-        address, address,
-        {TranslationTable::BlockSize::_2MB, MemoryAttr::NORMAL_NC, S2AP::NORMAL,
+  base = reinterpret_cast<void*>((880ULL << 20));
+  auto vc_ram = CreateDirectRegion(base, (128ULL << 20));
+  p_space_->MapRegion(base, vc_ram, {MemoryAttr::NORMAL_NC, S2AP::NORMAL,
          SH::NON_SHAREABLE, AF::IGNORE, Contiguous::OFF, XN::EXECUTE});
-  }
 
   // 16 MB peripherals at 0x3F000000 - 0x40000000
-  for (; base < 512; base++) {
-    void* address = reinterpret_cast<void*>(base << 21);
-    p_space_->translation_table.Map(
-        address, address,
-        {TranslationTable::BlockSize::_2MB, MemoryAttr::DEVICE_NGNRNE,
+  base = reinterpret_cast<void*>((1008ULL << 20));
+  auto peripherals = CreateDirectRegion(base, (16ULL << 20));
+  p_space_->MapRegion(base, peripherals, {MemoryAttr::DEVICE_NGNRNE,
          S2AP::NORMAL, SH::NON_SHAREABLE, AF::IGNORE, Contiguous::OFF,
          XN::EXECUTE});
-  }
 
   // 2 MB for mailboxes at 0x40000000
-  void* address = reinterpret_cast<void*>(base << 21);
-  p_space_->translation_table.Map(
-      address, address,
-      {TranslationTable::BlockSize::_2MB, MemoryAttr::DEVICE_NGNRNE,
+  base = reinterpret_cast<void*>((1024ULL << 20));
+  auto mailboxes = CreateDirectRegion(base, (2ULL << 20));
+  p_space_->MapRegion(base, mailboxes, {MemoryAttr::DEVICE_NGNRNE,
        S2AP::NORMAL, SH::NON_SHAREABLE, AF::IGNORE, Contiguous::OFF,
        XN::EXECUTE});
-
-  mmu_.SetLowerTable(p_space_->translation_table.GetBase());
-
-  mmu_.Enable();
-}
-
-void Memory::Select(AddressSpace& space) {
-  mmu_.SetHigherTable(space.translation_table.GetBase());
-}
-
-PagedRegion::Sptr Memory::CreatePagedRegion(const size_t count) {
-  return PagedRegion::Sptr::Make(count);
-}
-
-AddressSpace::Uptr Memory::CreateAddressSpace()
-{
-  return AddressSpace::Uptr::Make();
 }
 
 }  // namespace mm

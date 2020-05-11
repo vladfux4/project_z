@@ -1,7 +1,7 @@
 #ifndef KERNEL_MM_ADDRESS_SPACE_H_
 #define KERNEL_MM_ADDRESS_SPACE_H_
 
-#include "arch/arm64/mm/translation_table.h"
+#include "arch/arm64/mm/address_space.h"
 #include "kernel/config.h"
 #include "kernel/logger.h"
 #include "kernel/mm/physical_allocator.h"
@@ -15,24 +15,31 @@ class AddressSpace : public arch::arm64::mm::AddressSpace {
  public:
   using Uptr = kernel::mm::UniquePointer<AddressSpace, SlabAllocator>;
 
-  void MapRegion(void* begin, PagedRegion::Sptr region, const Region::Attributes& attr) {
-    auto& pages = region->Pages();
-    auto address = reinterpret_cast<PagedRegion::Page*>(begin);
-    for (auto it = pages.Begin(); it != pages.End(); it++, address++) {
-      LOG(DEBUG) << "map page v: " << address << " -> p: " << it.Value();
-
-      TranslationTable::EntryParameters params = {
-        AddressSpace::TranslationTable::BlockSize::_4KB,
-        attr.mem_attr,
-        attr.s2ap,
-        attr.sh,
-        attr.af,
-        attr.contiguous,
-        attr.xn
-      };
-      translation_table.Map(address, reinterpret_cast<void*>(it.Value()), params);
-    }
+  ~AddressSpace() {
+    LOG(DEBUG) << "~AddressSpace";
   }
+
+  template<class RegionType>
+  struct RegionJoint {
+    void* begin;
+    typename RegionType::Sptr region;
+    Region::Attributes attr;
+  };
+
+  void MapRegion(void* begin, PagedRegion::Sptr& region, const Region::Attributes& attr) {
+    arch::arm64::mm::AddressSpace::MapRegion(begin, region, attr);
+    paged_regions_.Push({begin, region, attr});
+  }
+
+  void MapRegion(void* begin, DirectRegion::Sptr& region, const Region::Attributes& attr) {
+    arch::arm64::mm::AddressSpace::MapRegion(begin, region, attr);
+    direct_regions_.Push({begin, region, attr});
+  }
+
+ private:
+  utils::List<RegionJoint<DirectRegion>, SlabAllocator> direct_regions_;
+  utils::List<RegionJoint<PagedRegion>, SlabAllocator> paged_regions_;
+
 };
 
 }  // namespace mm

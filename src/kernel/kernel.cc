@@ -45,6 +45,17 @@ __attribute__((__noreturn__)) void __assert_func(const char*, int, const char*,
 }
 }
 
+
+void operator delete(void*) {
+  while (true) {
+  }
+}
+
+void operator delete(void*, unsigned long) {
+  while (true) {
+  }
+}
+
 void Function_1() {
   static uint64_t a = 0;
 
@@ -98,6 +109,7 @@ Kernel::~Kernel() {}
 void Kernel::Routine() {
   LOG(INFO) << "Init";
   kernel::mm::StaticPagePool::Value().LogInfo();
+  kernel::mm::PageSlabAllocatorBase::LogInfo();
 
   {
     LOG(INFO) << "Run";
@@ -112,6 +124,10 @@ void Kernel::Routine() {
       SH::INNER_SHAREABLE, AF::IGNORE, Contiguous::OFF, XN::EXECUTE
     };
 
+    void* ptr = region_1->Pages().Begin().Value();
+    LOG(INFO) << "Region first page: " << ptr;
+
+
     address_space_1->MapRegion(reinterpret_cast<void*>(0xFFFFFFFFFFF00000),
                                region_1, attr);
     address_space_2->MapRegion(reinterpret_cast<void*>(0xFFFFFFFFFFF10000),
@@ -121,7 +137,7 @@ void Kernel::Routine() {
       memory_.Select(*address_space_1);
 
       uint64_t* p_ptr =
-          reinterpret_cast<uint64_t*>(0x0000000000281000);
+          reinterpret_cast<uint64_t*>(ptr);
       uint64_t* v_ptr =
           reinterpret_cast<uint64_t*>(0xFFFFFFFFFFF00010);
       *p_ptr = 0xAAAAAAAAAAAAAAAA;
@@ -132,7 +148,7 @@ void Kernel::Routine() {
       memory_.Select(*address_space_2);
 
       uint64_t* p_ptr =
-          reinterpret_cast<uint64_t*>(0x0000000000281030);
+          reinterpret_cast<uint64_t*>((reinterpret_cast<uint64_t>(ptr) | 0x30));
       uint64_t* v_ptr =
           reinterpret_cast<uint64_t*>(0xFFFFFFFFFFF10040);
       *p_ptr = 0xCCCCCCCCCCCCCCCC;
@@ -140,6 +156,7 @@ void Kernel::Routine() {
     }
 
     kernel::mm::StaticPagePool::Value().LogInfo();
+    kernel::mm::PageSlabAllocatorBase::LogInfo();
   }
   {
 //    auto process_1 = scheduler_.CreateProcess("Process_1", Function_1);
@@ -195,6 +212,7 @@ void KernelEntry() {
 
   LOG(INFO) << "Finish";
   kernel::mm::StaticPagePool::Value().LogInfo();
+  kernel::mm::PageSlabAllocatorBase::LogInfo();
 }
 }
 

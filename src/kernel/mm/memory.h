@@ -38,9 +38,13 @@ class Memory {
   void Select(AddressSpace& space);
 
   PagedRegion::Sptr CreatePagedRegion(const size_t count);
+  DirectRegion::Sptr CreateDirectRegion(void* begin, const size_t length);
+
   AddressSpace::Uptr CreateAddressSpace();
 
  private:
+  void InitPagePool();
+  void InitPhSpace();
 
   arch::mm::MMU mmu_;
   AddressSpace::Uptr p_space_;

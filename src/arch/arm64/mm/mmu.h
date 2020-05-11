@@ -18,6 +18,7 @@ GNU General Public License for more details.
 #define ARCH_ARM64_MM_MMU_H_
 
 #include "arch/arm64/mm/tcr.h"
+#include "arch/arm64/mm/address_space.h"
 
 namespace arch {
 namespace arm64 {
@@ -40,6 +41,8 @@ class MMU {
 
   inline void SetLowerTable(void* address) { SetTTBR0(address); }
   inline void SetHigherTable(void* address) { SetTTBR1(address); }
+
+  void SelectAddressSpace(AddressSpace& address_space);
 
  private:
   /**

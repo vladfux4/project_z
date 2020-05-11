@@ -71,6 +71,9 @@ void MMU::Enable() {
   asm volatile("isb");
 }
 
+void MMU::SelectAddressSpace(AddressSpace&) {
+}
+
 }  // namespace mm
 }  // namespace arm64
 }  // namespace arch

@@ -26,8 +26,17 @@ GNU General Public License for more details.
 namespace kernel {
 namespace mm {
 
+struct PageSlabAllocatorBase {
+ public:
+  static inline size_t used_objects = 0;
+
+  static void LogInfo() {
+    LOG(DEBUG) << "Used objects: " << used_objects;
+  }
+};
+
 template <typename T, size_t kAlignment>
-struct PageSlabAllocator {
+struct PageSlabAllocator : public PageSlabAllocatorBase {
  public:
   struct Node {
     using Index = std::size_t;
@@ -51,6 +60,7 @@ struct PageSlabAllocator {
     Node* node = root_;
     while (node != nullptr) {
       if (0 != node->pool.FreeSlots()) {
+        used_objects++;
         return node->pool.Allocate();
       }
 
@@ -69,6 +79,7 @@ struct PageSlabAllocator {
 
     while (node != nullptr) {
       if (node->pool.IsRelated(address)) {
+        used_objects--;
         node->pool.Deallocate(address);
 
         if (node->pool.Empty()) {

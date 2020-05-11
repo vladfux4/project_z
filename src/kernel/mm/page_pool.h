@@ -20,7 +20,6 @@ GNU General Public License for more details.
 #include <cstddef>
 #include <cstdint>
 
-#include "gen/arch_types_gen.h"
 #include "kernel/config.h"
 #include "kernel/mm/boot_allocator.h"
 #include "kernel/mm/pool.h"
@@ -47,8 +46,8 @@ class PagePool : public Pool<PageInfo, size_t, BootAllocator> {
   PagePool(const size_t length) : Pool(GetPageCount(length)), begin_(nullptr) {}
 
   void LogInfo() {
-    LOG(VERBOSE) << "Free: " << FreeSlots();
-    LOG(VERBOSE) << "Used pages: " << (Size() - FreeSlots());
+    LOG(DEBUG) << "Free: " << FreeSlots();
+    LOG(DEBUG) << "Used pages: " << (Size() - FreeSlots());
   }
 
   uint8_t* begin_;
